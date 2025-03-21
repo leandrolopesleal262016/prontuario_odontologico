@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Prontuário</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-3xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Novo Prontuário - {{ paciente.nome }}</h1>
+        <form action="/paciente/{{ paciente.id }}/novo_prontuario" method="POST" class="space-y-4 bg-white p-6 rounded shadow">
+            <textarea name="diagnostico" placeholder="Diagnóstico" class="w-full border p-2 rounded" required></textarea>
+            <textarea name="procedimento" placeholder="Procedimento" class="w-full border p-2 rounded" required></textarea>
+            <textarea name="prescricao" placeholder="Prescrição" class="w-full border p-2 rounded"></textarea>
+            <textarea name="recomendacoes" placeholder="Recomendações" class="w-full border p-2 rounded"></textarea>
+            <input type="text" name="anexos" placeholder="Links de anexos (separados por vírgula)" class="w-full border p-2 rounded">
+            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Salvar prontuário</button>
+        </form>
+    </div>
+</body>
+</html>

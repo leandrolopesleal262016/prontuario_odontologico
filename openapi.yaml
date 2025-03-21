@@ -24,7 +24,6 @@ paths:
                 type: array
                 items:
                   type: object
-
     post:
       summary: Agendar consulta para paciente
       requestBody:
@@ -46,7 +45,7 @@ paths:
 
   /api/paciente/{id}:
     get:
-      summary: Buscar dados do paciente
+      summary: Buscar dados do paciente por ID
       parameters:
         - name: id
           in: path
@@ -60,6 +59,49 @@ paths:
             application/json:
               schema:
                 type: object
+
+  /api/paciente/nome/{nome}:
+    get:
+      summary: Buscar paciente pelo nome
+      parameters:
+        - name: nome
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de pacientes com nome correspondente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /api/pacientes:
+    get:
+      summary: Listar todos os pacientes com filtros opcionais
+      parameters:
+        - name: sexo
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: idade
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de pacientes filtrada
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
 
   /api/prontuario:
     post:

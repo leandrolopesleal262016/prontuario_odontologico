@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Paciente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-3xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Cadastrar Novo Paciente</h1>
+        <form action="/novo_paciente" method="POST" class="space-y-4 bg-white p-6 rounded shadow">
+            <input type="text" name="nome" placeholder="Nome completo" class="w-full border p-2 rounded" required>
+            <input type="number" name="idade" placeholder="Idade" class="w-full border p-2 rounded" required>
+            <input type="text" name="sexo" placeholder="Sexo" class="w-full border p-2 rounded" required>
+            <input type="text" name="telefone" placeholder="Telefone" class="w-full border p-2 rounded" required>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Salvar</button>
+        </form>
+    </div>
+</body>
+</html>
