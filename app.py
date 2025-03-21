@@ -7,6 +7,9 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///prontuarios.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+@app.route('/privacy')
+def privacy_policy():
+    return send_from_directory(os.path.dirname(__file__), 'privacy.html', mimetype='text/html')
 
 # MODELS
 class Paciente(db.Model):
