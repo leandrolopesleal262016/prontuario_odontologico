@@ -1,0 +1,15 @@
+{
+    "schema_version": "v1",
+    "name_for_human": "Prontuário Odontológico",
+    "name_for_model": "prontuario_odontologico",
+    "description_for_human": "Gerencie pacientes, consultas e prontuários odontológicos.",
+    "description_for_model": "Consulta agenda, acessa pacientes e cria prontuários odontológicos.",
+    "api": {
+      "type": "openapi",
+      "url": "https://leandrolealwisemadness.pythonanywhere.com/openapi.yaml"
+    },
+    "auth": {
+      "type": "none"
+    }
+  }
+  

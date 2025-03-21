@@ -1,0 +1,97 @@
+openapi: 3.0.1
+info:
+  title: API Prontuário Odontológico
+  version: '1.0'
+  description: API para gerenciar pacientes, agendamentos e prontuários odontológicos.
+
+paths:
+  /api/agenda:
+    get:
+      summary: Listar consultas do dia
+      parameters:
+        - name: data
+          in: query
+          description: Data no formato YYYY-MM-DD
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de consultas agendadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+    post:
+      summary: Agendar consulta para paciente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paciente_id:
+                  type: integer
+                data_agenda:
+                  type: string
+                observacoes:
+                  type: string
+      responses:
+        '200':
+          description: Consulta agendada com sucesso
+
+  /api/paciente/{id}:
+    get:
+      summary: Buscar dados do paciente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Informações completas do paciente e seus prontuários
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/prontuario:
+    post:
+      summary: Criar novo prontuário odontológico
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paciente_id:
+                  type: integer
+                diagnostico:
+                  type: string
+                procedimento:
+                  type: string
+                prescricao:
+                  type: array
+                  items:
+                    type: string
+                recomendacoes:
+                  type: string
+                anexos:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      descricao:
+                        type: string
+                      link:
+                        type: string
+      responses:
+        '200':
+          description: Prontuário criado com sucesso

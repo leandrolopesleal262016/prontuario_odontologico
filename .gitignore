@@ -1,0 +1,49 @@
+# Banco de dados SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Ambiente virtual Python
+venv/
+env/
+ENV/
+.venv/
+.env/
+.ENV/
+
+# Arquivos de cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Arquivos de log
+*.log
+logs/
+
+# Arquivos temporários
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Arquivos de configuração local
+instance/
+.env
+.flaskenv
+
+# Arquivos de distribuição / empacotamento
+dist/
+build/
+*.egg-info/
+
+# Arquivos de mídia e uploads (caso seu sistema permita upload de arquivos)
+uploads/
+media/
+
+# Arquivos de dependências
+node_modules/
