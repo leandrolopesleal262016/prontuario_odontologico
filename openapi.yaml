@@ -81,7 +81,7 @@ paths:
 
   /api/pacientes:
     get:
-      summary: Listar todos os pacientes com filtros opcionais
+      summary: Listar todos os pacientes cadastrados (com ou sem filtros)
       parameters:
         - name: sexo
           in: query
@@ -95,7 +95,7 @@ paths:
             type: integer
       responses:
         '200':
-          description: Lista de pacientes filtrada
+          description: Lista completa ou filtrada de pacientes
           content:
             application/json:
               schema:

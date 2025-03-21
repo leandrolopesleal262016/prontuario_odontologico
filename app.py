@@ -166,6 +166,21 @@ def api_agendar():
 def serve_manifest():
     return send_from_directory(os.path.dirname(__file__), 'ai-plugin.json', mimetype='application/json')
 
+@app.route('/api/pacientes_por_nome')
+def api_pacientes_por_nome():
+    nome = request.args.get('nome')
+    pacientes = Paciente.query.filter(Paciente.nome.ilike(f"%{nome}%")).all()
+    resultado = []
+    for paciente in pacientes:
+        resultado.append({
+            "id": paciente.id,
+            "nome": paciente.nome,
+            "idade": paciente.idade,
+            "sexo": paciente.sexo,
+            "telefone": paciente.telefone
+        })
+    return jsonify(resultado)
+
 @app.route('/openapi.yaml')
 def serve_openapi():
     return send_from_directory(os.path.dirname(__file__), 'openapi.yaml', mimetype='text/yaml')
