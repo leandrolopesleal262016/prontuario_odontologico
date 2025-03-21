@@ -2,14 +2,19 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 from flask_sqlalchemy import SQLAlchemy
 import datetime
 import os
+import logging
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///prontuarios.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-@app.route('/privacy')
-def privacy_policy():
-    return send_from_directory(os.path.dirname(__file__), 'privacy.html', mimetype='text/html')
+
+# Configuração de logs
+logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
+
+@app.before_request
+def log_request_info():
+    logging.info(f"[REQUEST] {request.method} {request.path} | Params: {request.args} | JSON: {request.get_json(silent=True)}")
 
 # MODELS
 class Paciente(db.Model):
@@ -36,62 +41,61 @@ class Agenda(db.Model):
     data_agenda = db.Column(db.Date, nullable=False)
     observacoes = db.Column(db.Text)
 
-# ROTAS PRINCIPAIS
-@app.route('/')
-def index():
-    pacientes = Paciente.query.all()
-    return render_template('index.html', pacientes=pacientes)
+# ROTAS DE API E WEB
+@app.route('/api/paciente/nome/<string:nome>')
+def api_paciente_nome(nome):
+    pacientes = Paciente.query.filter(Paciente.nome.ilike(f"%{nome}%")).all()
+    if not pacientes:
+        return jsonify({'error': 'Paciente não encontrado'}), 404
+    resultado = []
+    for paciente in pacientes:
+        prontuarios = []
+        for pront in paciente.prontuarios:
+            prontuarios.append({
+                "data_consulta": pront.data_consulta.strftime('%Y-%m-%d'),
+                "diagnostico": pront.diagnostico,
+                "procedimento": pront.procedimento,
+                "prescricao": pront.prescricao,
+                "recomendacoes": pront.recomendacoes,
+                "anexos": pront.anexos
+            })
+        resultado.append({
+            "id": paciente.id,
+            "nome": paciente.nome,
+            "idade": paciente.idade,
+            "sexo": paciente.sexo,
+            "telefone": paciente.telefone,
+            "prontuarios": prontuarios
+        })
+    return jsonify(resultado)
 
-@app.route('/paciente/<int:id>')
-def prontuario(id):
-    paciente = Paciente.query.get_or_404(id)
-    return render_template('prontuario.html', paciente=paciente)
+@app.route('/api/pacientes')
+def api_listar_pacientes():
+    sexo = request.args.get('sexo')
+    idade = request.args.get('idade')
+    query = Paciente.query
+    if sexo:
+        query = query.filter(Paciente.sexo.ilike(f"%{sexo}%"))
+    if idade:
+        query = query.filter(Paciente.idade == int(idade))
+    pacientes = query.all()
+    resultado = []
+    for paciente in pacientes:
+        resultado.append({
+            "id": paciente.id,
+            "nome": paciente.nome,
+            "idade": paciente.idade,
+            "sexo": paciente.sexo,
+            "telefone": paciente.telefone
+        })
+    return jsonify(resultado)
 
-@app.route('/novo_paciente', methods=['GET', 'POST'])
-def novo_paciente():
-    if request.method == 'POST':
-        nome = request.form['nome']
-        idade = request.form['idade']
-        sexo = request.form['sexo']
-        telefone = request.form['telefone']
-        novo = Paciente(nome=nome, idade=idade, sexo=sexo, telefone=telefone)
-        db.session.add(novo)
-        db.session.commit()
-        return redirect(url_for('index'))
-    return render_template('novo_paciente.html')
-
-@app.route('/paciente/<int:id>/novo_prontuario', methods=['GET', 'POST'])
-def novo_prontuario(id):
-    paciente = Paciente.query.get_or_404(id)
-    if request.method == 'POST':
-        diagnostico = request.form['diagnostico']
-        procedimento = request.form['procedimento']
-        prescricao = request.form['prescricao']
-        recomendacoes = request.form['recomendacoes']
-        anexos = request.form['anexos']
-
-        pront = Prontuario(
-            paciente_id=paciente.id,
-            data_consulta=datetime.date.today(),
-            diagnostico=diagnostico,
-            procedimento=procedimento,
-            prescricao=prescricao,
-            recomendacoes=recomendacoes,
-            anexos=anexos
-        )
-        db.session.add(pront)
-        db.session.commit()
-        return redirect(url_for('prontuario', id=paciente.id))
-    return render_template('novo_prontuario.html', paciente=paciente)
-
-# API PARA INTEGRAÇÃO COM GPT
 @app.route('/api/prontuario', methods=['POST'])
 def api_prontuario():
     data = request.json
     paciente = Paciente.query.get(data['paciente_id'])
     if not paciente:
         return jsonify({'error': 'Paciente não encontrado'}), 404
-
     pront = Prontuario(
         paciente_id=paciente.id,
         data_consulta=datetime.date.today(),
@@ -103,9 +107,25 @@ def api_prontuario():
     )
     db.session.add(pront)
     db.session.commit()
+    logging.info('Prontuário criado com sucesso.')
     return jsonify({'status': 'Prontuário salvo com sucesso'})
 
-# API - Consulta agenda do dia
+@app.route('/api/agenda', methods=['POST'])
+def api_agendar():
+    data = request.json
+    paciente = Paciente.query.get(data['paciente_id'])
+    if not paciente:
+        return jsonify({'error': 'Paciente não encontrado'}), 404
+    nova_agenda = Agenda(
+        paciente_id=paciente.id,
+        data_agenda=datetime.datetime.strptime(data['data_agenda'], "%Y-%m-%d").date(),
+        observacoes=data.get('observacoes', '')
+    )
+    db.session.add(nova_agenda)
+    db.session.commit()
+    logging.info('Consulta agendada com sucesso.')
+    return jsonify({'status': 'Consulta agendada com sucesso'})
+
 @app.route('/api/agenda')
 def api_agenda():
     data = request.args.get('data')
@@ -121,68 +141,28 @@ def api_agenda():
         })
     return jsonify(resultado)
 
-# API - Dados do paciente
-@app.route('/api/paciente/<int:id>')
-def api_paciente(id):
-    paciente = Paciente.query.get(id)
-    if not paciente:
-        return jsonify({'error': 'Paciente não encontrado'}), 404
+# Interface web básica
+@app.route('/')
+def index():
+    pacientes = Paciente.query.all()
+    return render_template('index.html', pacientes=pacientes)
 
-    prontuarios = []
-    for pront in paciente.prontuarios:
-        prontuarios.append({
-            "data_consulta": pront.data_consulta.strftime('%Y-%m-%d'),
-            "diagnostico": pront.diagnostico,
-            "procedimento": pront.procedimento,
-            "prescricao": pront.prescricao,
-            "recomendacoes": pront.recomendacoes,
-            "anexos": pront.anexos
-        })
+@app.route('/privacy')
+def privacy_policy():
+    return send_from_directory(os.path.dirname(__file__), 'privacy.html', mimetype='text/html')
 
-    return jsonify({
-        "nome": paciente.nome,
-        "idade": paciente.idade,
-        "sexo": paciente.sexo,
-        "telefone": paciente.telefone,
-        "prontuarios": prontuarios
-    })
+@app.route('/admin/logs')
+def view_logs():
+    try:
+        with open('app.log', 'r') as log_file:
+            content = log_file.read()
+        return f"<pre>{content}</pre>"
+    except FileNotFoundError:
+        return "<p>Arquivo de log ainda não foi criado.</p>"
 
-# API - Agendar consulta
-@app.route('/api/agenda', methods=['POST'])
-def api_agendar():
-    data = request.json
-    paciente = Paciente.query.get(data['paciente_id'])
-    if not paciente:
-        return jsonify({'error': 'Paciente não encontrado'}), 404
-
-    nova_agenda = Agenda(
-        paciente_id=paciente.id,
-        data_agenda=datetime.datetime.strptime(data['data_agenda'], "%Y-%m-%d").date(),
-        observacoes=data.get('observacoes', '')
-    )
-    db.session.add(nova_agenda)
-    db.session.commit()
-    return jsonify({'status': 'Consulta agendada com sucesso'})
-
-# Rota para servir o ai-plugin.json e openapi.yaml
 @app.route('/.well-known/ai-plugin.json')
 def serve_manifest():
     return send_from_directory(os.path.dirname(__file__), 'ai-plugin.json', mimetype='application/json')
-
-@app.route('/api/pacientes_por_nome')
-def api_pacientes_por_nome():
-    nome = request.args.get('nome')
-    pacientes = Paciente.query.filter(Paciente.nome.ilike(f"%{nome}%")).all()
-    resultado = []
-    for paciente in pacientes:
-        resultado.append({
-            "id": paciente.id,
-            "nome": paciente.nome,
-            "idade": paciente.idade,
-            "sexo": paciente.sexo,
-            "telefone": paciente.telefone
-        })
-    return jsonify(resultado)
 
 @app.route('/openapi.yaml')
 def serve_openapi():

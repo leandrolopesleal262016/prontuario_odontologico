@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Logs do Sistema</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
+        <h1 class="text-2xl font-bold mb-4 text-center">Logs da Aplicação</h1>
+        <div class="bg-black text-green-400 font-mono text-sm p-4 rounded h-[500px] overflow-y-scroll">
+            {% for linha in logs %}
+                <p>{{ linha.strip() }}</p>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+
+</html>
