@@ -160,11 +160,12 @@ def api_agendar():
 # Rota para servir o ai-plugin.json e openapi.yaml
 @app.route('/.well-known/ai-plugin.json')
 def serve_manifest():
-    return send_from_directory('.', 'ai-plugin.json', mimetype='application/json')
+    return send_from_directory(os.path.dirname(__file__), 'ai-plugin.json', mimetype='application/json')
+
 
 @app.route('/openapi.yaml')
 def serve_openapi():
-    return send_from_directory('.', 'openapi.yaml', mimetype='text/yaml')
+    return send_from_directory(os.path.dirname(__file__), 'openapi.yaml', mimetype='text/yaml')
 
 if __name__ == '__main__':
     with app.app_context():
