@@ -162,6 +162,10 @@ def api_agendar():
 def serve_manifest():
     return send_from_directory(os.path.dirname(__file__), 'ai-plugin.json', mimetype='application/json')
 
+@app.route('/privacy')
+def privacy_policy():
+    return send_from_directory('.', 'privacy.html', mimetype='text/html')
+
 
 @app.route('/openapi.yaml')
 def serve_openapi():
