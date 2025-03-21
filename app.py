@@ -44,38 +44,42 @@ def prontuario(id):
     paciente = Paciente.query.get_or_404(id)
     return render_template('prontuario.html', paciente=paciente)
 
-@app.route('/novo_paciente', methods=['POST'])
+@app.route('/novo_paciente', methods=['GET', 'POST'])
 def novo_paciente():
-    nome = request.form['nome']
-    idade = request.form['idade']
-    sexo = request.form['sexo']
-    telefone = request.form['telefone']
-    novo = Paciente(nome=nome, idade=idade, sexo=sexo, telefone=telefone)
-    db.session.add(novo)
-    db.session.commit()
-    return redirect(url_for('index'))
+    if request.method == 'POST':
+        nome = request.form['nome']
+        idade = request.form['idade']
+        sexo = request.form['sexo']
+        telefone = request.form['telefone']
+        novo = Paciente(nome=nome, idade=idade, sexo=sexo, telefone=telefone)
+        db.session.add(novo)
+        db.session.commit()
+        return redirect(url_for('index'))
+    return render_template('novo_paciente.html')
 
-@app.route('/paciente/<int:id>/novo_prontuario', methods=['POST'])
+@app.route('/paciente/<int:id>/novo_prontuario', methods=['GET', 'POST'])
 def novo_prontuario(id):
     paciente = Paciente.query.get_or_404(id)
-    diagnostico = request.form['diagnostico']
-    procedimento = request.form['procedimento']
-    prescricao = request.form['prescricao']
-    recomendacoes = request.form['recomendacoes']
-    anexos = request.form['anexos']
+    if request.method == 'POST':
+        diagnostico = request.form['diagnostico']
+        procedimento = request.form['procedimento']
+        prescricao = request.form['prescricao']
+        recomendacoes = request.form['recomendacoes']
+        anexos = request.form['anexos']
 
-    pront = Prontuario(
-        paciente_id=paciente.id,
-        data_consulta=datetime.date.today(),
-        diagnostico=diagnostico,
-        procedimento=procedimento,
-        prescricao=prescricao,
-        recomendacoes=recomendacoes,
-        anexos=anexos
-    )
-    db.session.add(pront)
-    db.session.commit()
-    return redirect(url_for('prontuario', id=paciente.id))
+        pront = Prontuario(
+            paciente_id=paciente.id,
+            data_consulta=datetime.date.today(),
+            diagnostico=diagnostico,
+            procedimento=procedimento,
+            prescricao=prescricao,
+            recomendacoes=recomendacoes,
+            anexos=anexos
+        )
+        db.session.add(pront)
+        db.session.commit()
+        return redirect(url_for('prontuario', id=paciente.id))
+    return render_template('novo_prontuario.html', paciente=paciente)
 
 # API PARA INTEGRAÇÃO COM GPT
 @app.route('/api/prontuario', methods=['POST'])
@@ -161,11 +165,6 @@ def api_agendar():
 @app.route('/.well-known/ai-plugin.json')
 def serve_manifest():
     return send_from_directory(os.path.dirname(__file__), 'ai-plugin.json', mimetype='application/json')
-
-@app.route('/privacy')
-def privacy_policy():
-    return send_from_directory('.', 'privacy.html', mimetype='text/html')
-
 
 @app.route('/openapi.yaml')
 def serve_openapi():
