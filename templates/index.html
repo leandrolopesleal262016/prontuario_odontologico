@@ -1,0 +1,48 @@
+<!-- /templates/index.html -->
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-8">
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-4xl font-bold mb-8 text-center">Gestão de Pacientes</h1>
+
+        <!-- Formulário de novo paciente -->
+        <div class="bg-white p-6 rounded shadow mb-10">
+            <h2 class="text-2xl font-semibold mb-4">Novo paciente</h2>
+            <form action="/novo_paciente" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input type="text" name="nome" placeholder="Nome completo" class="border p-2 rounded" required>
+                <input type="number" name="idade" placeholder="Idade" class="border p-2 rounded" required>
+                <input type="text" name="sexo" placeholder="Sexo" class="border p-2 rounded" required>
+                <input type="text" name="telefone" placeholder="Telefone" class="border p-2 rounded" required>
+                <button type="submit" class="col-span-1 md:col-span-4 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Adicionar paciente</button>
+            </form>
+        </div>
+
+        <!-- Lista de pacientes -->
+        <div class="bg-white p-6 rounded shadow">
+            <h2 class="text-2xl font-semibold mb-4">Pacientes cadastrados</h2>
+            <ul class="divide-y divide-gray-200">
+                {% for paciente in pacientes %}
+                    <li class="py-4 flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold">{{ paciente.nome }}</p>
+                            <p class="text-sm text-gray-600">{{ paciente.idade }} anos | {{ paciente.sexo }} | {{ paciente.telefone }}</p>
+                        </div>
+                        <a href="/paciente/{{ paciente.id }}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Ver prontuário</a>
+                    </li>
+                {% else %}
+                    <li class="py-4 text-gray-600">Nenhum paciente cadastrado.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+
+</html>

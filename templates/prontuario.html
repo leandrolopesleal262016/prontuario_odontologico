@@ -1,0 +1,59 @@
+<!-- /templates/prontuario.html -->
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prontuário de {{ paciente.nome }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-8">
+    <div class="max-w-3xl mx-auto">
+        <a href="/" class="text-blue-600 hover:underline mb-4 inline-block">&larr; Voltar</a>
+        <h1 class="text-3xl font-bold mb-4">Prontuário de {{ paciente.nome }}</h1>
+
+        <div class="bg-white p-4 rounded shadow mb-6">
+            <p><strong>Idade:</strong> {{ paciente.idade }} anos</p>
+            <p><strong>Sexo:</strong> {{ paciente.sexo }}</p>
+            <p><strong>Telefone:</strong> {{ paciente.telefone }}</p>
+        </div>
+
+        <h2 class="text-xl font-semibold mb-2">Consultas e Prontuários</h2>
+        <div class="space-y-4 mb-8">
+            {% for prontuario in paciente.prontuarios %}
+                <div class="bg-white p-4 rounded shadow">
+                    <p><strong>Data:</strong> {{ prontuario.data_consulta.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Diagnóstico:</strong> {{ prontuario.diagnostico }}</p>
+                    <p><strong>Procedimento:</strong> {{ prontuario.procedimento }}</p>
+                    <p><strong>Prescrição:</strong> {{ prontuario.prescricao }}</p>
+                    <p><strong>Recomendações:</strong> {{ prontuario.recomendacoes }}</p>
+                    {% if prontuario.anexos %}
+                        <p><strong>Anexos:</strong></p>
+                        <ul class="list-disc list-inside">
+                            {% for link in prontuario.anexos.split('\\n') %}
+                                <li><a href="{{ link }}" class="text-blue-600 hover:underline" target="_blank">{{ link }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Formulário para adicionar novo prontuário -->
+        <div class="bg-white p-4 rounded shadow">
+            <h3 class="text-lg font-semibold mb-4">Adicionar novo prontuário</h3>
+            <form action="/paciente/{{ paciente.id }}/novo_prontuario" method="POST" class="space-y-4">
+                <textarea name="diagnostico" placeholder="Diagnóstico" class="w-full border p-2 rounded" required></textarea>
+                <textarea name="procedimento" placeholder="Procedimento realizado" class="w-full border p-2 rounded" required></textarea>
+                <textarea name="prescricao" placeholder="Prescrição (ex: Medicamento X 500mg 8/8h por 7 dias)" class="w-full border p-2 rounded"></textarea>
+                <textarea name="recomendacoes" placeholder="Recomendações ao paciente" class="w-full border p-2 rounded"></textarea>
+                <input type="text" name="anexos" placeholder="Links de anexos (separados por vírgula)" class="w-full border p-2 rounded">
+                <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700">Salvar prontuário</button>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>
