@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Administrativo - Prontuário Odontológico</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .actions a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .actions a:hover {
+            text-decoration: underline;
+        }
+        .btn-delete {
+            color: #e74c3c !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dashboard Administrativo - Prontuário Odontológico</h1>
+        
+        <div>
+            <a href="/" class="btn">Página Inicial</a>
+            <a href="/novo_paciente" class="btn">Cadastrar Novo Paciente</a>
+            <a href="/assistente" class="btn">Assistente de Voz</a>
+            <a href="/admin/logs" class="btn">Ver Logs</a>
+        </div>
+        
+        <h2>Lista de Pacientes</h2>
+        
+
+        <!-- Adicione esta seção de depuração -->
+        <div style="background-color: #f8f9fa; padding: 10px; margin-bottom: 15px; border-radius: 5px;">
+            <p><strong>Depuração:</strong> 
+            {% if pacientes is defined %}
+                Variável 'pacientes' está definida.
+                {% if pacientes %}
+                    Contém {{ pacientes|length }} paciente(s).
+                {% else %}
+                    Está vazia.
+                {% endif %}
+            {% else %}
+                Variável 'pacientes' NÃO está definida.
+            {% endif %}
+            </p>
+        </div>
+        
+        {% if pacientes %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Idade</th>
+                        <th>Sexo</th>
+                        <th>Telefone</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for paciente in pacientes %}
+                    <tr>
+                        <td>{{ paciente.id }}</td>
+                        <td>{{ paciente.nome }}</td>
+                        <td>{{ paciente.idade }}</td>
+                        <td>{{ paciente.sexo }}</td>
+                        <td>{{ paciente.telefone }}</td>
+                        <td class="actions">
+                            <a href="{{ url_for('ver_prontuarios', paciente_id=paciente.id) }}">Ver Prontuários</a>
+                            <a href="{{ url_for('editar_paciente', paciente_id=paciente.id) }}">Editar</a>
+                            <a href="{{ url_for('excluir_paciente', paciente_id=paciente.id) }}" class="btn-delete">Excluir</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhum paciente cadastrado.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Assistente Odontológico com Voz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-xl mx-auto bg-white rounded-lg shadow p-6 space-y-4">
+        <h1 class="text-2xl font-bold">Assistente com Voz</h1>
+        <button id="mic" class="bg-blue-600 text-white px-4 py-2 rounded">🎙️ Falar</button>
+        <div id="resultado" class="mt-4 text-gray-700"></div>
+    </div>
+
+    <script>
+        const micBtn = document.getElementById('mic');
+        const resultado = document.getElementById('resultado');
+
+        const recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'pt-BR';
+        recognition.interimResults = false;
+
+        micBtn.onclick = () => {
+            recognition.start();
+            resultado.innerText = "🎙️ Escutando...";
+        };
+
+        recognition.onresult = async (e) => {
+            const texto = e.results[0][0].transcript;
+            resultado.innerText = "🔄 Processando: " + texto;
+
+            const response = await fetch('/processar_comando', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comando: texto })
+            });
+            const data = await response.json();
+            resultado.innerText = "✅ Resposta: " + data.resposta;
+
+            // Resposta com voz (TTS)
+            const synth = window.speechSynthesis;
+            const utter = new SpeechSynthesisUtterance(data.resposta);
+            utter.lang = 'pt-BR';
+            synth.speak(utter);
+        };
+    </script>
+</body>
+</html>

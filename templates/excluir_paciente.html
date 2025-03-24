@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excluir Paciente - {{ paciente.nome }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .warning {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+        .patient-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-danger {
+            background-color: #e74c3c;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        .btn-secondary {
+            background-color: #7f8c8d;
+        }
+        .btn-secondary:hover {
+            background-color: #636e72;
+        }
+        .error {
+            color: #e74c3c;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #fadbd8;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Excluir Paciente</h1>
+        
+        {% if erro %}
+        <div class="error">
+            {{ erro }}
+        </div>
+        {% endif %}
+        
+        <div class="warning">
+            <h3>Atenção!</h3>
+            <p>Você está prestes a excluir permanentemente este paciente e todos os seus prontuários. Esta ação não pode ser desfeita.</p>
+        </div>
+        
+        <div class="patient-info">
+            <h3>Informações do Paciente</h3>
+            <p><strong>Nome:</strong> {{ paciente.nome }}</p>
+            <p><strong>Idade:</strong> {{ paciente.idade }}</p>
+            <p><strong>Sexo:</strong> {{ paciente.sexo }}</p>
+            <p><strong>Telefone:</strong> {{ paciente.telefone }}</p>
+        </div>
+        
+        <form action="{{ url_for('excluir_paciente', paciente_id=paciente.id) }}" method="post">
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
