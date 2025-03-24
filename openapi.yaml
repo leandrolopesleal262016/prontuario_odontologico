@@ -8,7 +8,7 @@ servers:
   - url: https://leandrolealwisemadness.pythonanywhere.com
 
 paths:
-  /api/agenda:
+  /agenda:
     get:
       operationId: listar_agenda
       summary: Listar consultas do dia
@@ -62,7 +62,7 @@ paths:
                   status:
                     type: string
 
-  /api/paciente/{id}:
+  /paciente/{id}:
     get:
       operationId: buscar_paciente_id
       summary: Buscar dados do paciente por ID
@@ -106,7 +106,7 @@ paths:
                         anexos:
                           type: string
 
-  /api/paciente/nome/{nome}:
+  /paciente/nome/{nome}:
     get:
       operationId: buscar_paciente_nome
       summary: Buscar paciente pelo nome
@@ -154,7 +154,7 @@ paths:
                           anexos:
                             type: string
 
-  /api/pacientes:
+  /pacientes:
     get:
       operationId: listar_pacientes
       summary: Listar todos os pacientes cadastrados (com ou sem filtros)
@@ -190,7 +190,7 @@ paths:
                     telefone:
                       type: string
 
-  /api/prontuario:
+  /prontuario:
     post:
       operationId: criar_prontuario
       summary: Criar novo prontuário odontológico
@@ -233,7 +233,7 @@ paths:
                   status:
                     type: string
 
-  /api/paciente:
+  /novo_paciente:
     post:
       operationId: cadastrar_paciente
       summary: Cadastrar novo paciente
@@ -265,37 +265,62 @@ paths:
                   status:
                     type: string
 
-  /api/prontuario/{id}:
+  /paciente/{paciente_id}/prontuarios:
     get:
-      operationId: buscar_prontuario
-      summary: Buscar prontuário por ID
+      operationId: buscar_prontuarios_paciente
+      summary: Buscar prontuários de um paciente
       parameters:
-        - name: id
+        - name: paciente_id
           in: path
           required: true
           schema:
             type: integer
       responses:
         '200':
-          description: Dados do prontuário
+          description: Lista de prontuários do paciente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    data_consulta:
+                      type: string
+                    diagnostico:
+                      type: string
+                    procedimento:
+                      type: string
+                    prescricao:
+                      type: string
+                    recomendacoes:
+                      type: string
+                    anexos:
+                      type: string
+
+  /processar_comando:
+    post:
+      operationId: processar_comando_voz
+      summary: Processar comando de voz do assistente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comando:
+                  type: string
+                  description: Comando de voz a ser processado
+      responses:
+        '200':
+          description: Resposta do assistente
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: integer
-                  paciente_id:
-                    type: integer
-                  data_consulta:
-                    type: string
-                  diagnostico:
-                    type: string
-                  procedimento:
-                    type: string
-                  prescricao:
-                    type: string
-                  recomendacoes:
-                    type: string
-                  anexos:
+                  resposta:
                     type: string
