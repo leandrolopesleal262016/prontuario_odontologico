@@ -233,25 +233,31 @@ paths:
                   status:
                     type: string
 
-  /novo_paciente:
+  /paciente:
     post:
-      operationId: cadastrar_paciente
-      summary: Cadastrar novo paciente
+      operationId: criar_paciente_api
+      summary: Cadastrar novo paciente (API)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - nome
               properties:
                 nome:
                   type: string
+                  description: Nome do paciente (obrigatório)
                 idade:
                   type: integer
+                  description: Idade do paciente (opcional)
                 sexo:
                   type: string
+                  description: Sexo do paciente (opcional)
                 telefone:
                   type: string
+                  description: Telefone do paciente (opcional)
       responses:
         '200':
           description: Paciente cadastrado com sucesso

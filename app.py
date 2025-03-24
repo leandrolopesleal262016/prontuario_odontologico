@@ -278,23 +278,40 @@ def serve_openapi():
 @app.route('/novo_paciente', methods=['GET', 'POST'])
 def novo_paciente():
     if request.method == 'POST':
-        # Obter dados do formulário
-        nome = request.form.get('nome')
-        idade = request.form.get('idade')
-        sexo = request.form.get('sexo')
-        telefone = request.form.get('telefone', '-')
-        
-        # Validar dados
-        if not nome or not idade or not sexo:
-            return render_template('novo_paciente.html', erro="Todos os campos obrigatórios devem ser preenchidos.")
-        
         try:
+            # Verificar se os dados vieram como JSON ou como form data
+            if request.is_json:
+                dados = request.json
+            else:
+                dados = request.form
+            
+            # Obter dados do formulário/JSON
+            nome = dados.get('nome')
+            idade = dados.get('idade')
+            sexo = dados.get('sexo')
+            telefone = dados.get('telefone', '-')
+            
+            # Validar apenas o nome como obrigatório
+            if not nome:
+                if request.is_json:
+                    return jsonify({'erro': 'O campo nome é obrigatório.'}), 400
+                else:
+                    return render_template('novo_paciente.html', erro="O campo nome é obrigatório.")
+            
+            # Converter idade para inteiro se fornecida
+            idade_int = None
+            if idade:
+                try:
+                    idade_int = int(idade)
+                except (ValueError, TypeError):
+                    idade_int = 0  # Valor padrão se não for possível converter
+            
             # Criar novo paciente
             novo_paciente = Paciente(
                 nome=nome,
-                idade=int(idade),
-                sexo=sexo,
-                telefone=telefone
+                idade=idade_int,
+                sexo=sexo or '-',  # Valor padrão se não fornecido
+                telefone=telefone or '-'  # Valor padrão se não fornecido
             )
             
             # Salvar no banco de dados
@@ -304,13 +321,24 @@ def novo_paciente():
             # Registrar no log
             logging.info(f"Novo paciente cadastrado: {nome}")
             
-            # Redirecionar para a lista de pacientes
-            return redirect(url_for('admin_dashboard'))
+            # Responder de acordo com o tipo de requisição
+            if request.is_json:
+                return jsonify({
+                    'id': novo_paciente.id,
+                    'status': 'Paciente cadastrado com sucesso'
+                })
+            else:
+                # Redirecionar para a lista de pacientes
+                return redirect(url_for('admin_dashboard'))
         
         except Exception as e:
             db.session.rollback()
             logging.error(f"Erro ao cadastrar paciente: {str(e)}")
-            return render_template('novo_paciente.html', erro=f"Erro ao cadastrar: {str(e)}")
+            
+            if request.is_json:
+                return jsonify({'erro': f"Erro ao cadastrar: {str(e)}"}), 500
+            else:
+                return render_template('novo_paciente.html', erro=f"Erro ao cadastrar: {str(e)}")
     
     # Se for GET, apenas exibe o formulário
     return render_template('novo_paciente.html')
@@ -586,6 +614,49 @@ def criar_prontuario_api():
         db.session.rollback()
         logging.error(f"Erro ao criar prontuário: {str(e)}")
         return jsonify({'erro': 'Erro interno do servidor'}), 500
+
+@app.route('/paciente', methods=['POST'])
+def criar_paciente_api():
+    try:
+        # Obter dados do corpo da requisição
+        dados = request.json
+        
+        # Validar apenas o nome como obrigatório
+        if not dados or 'nome' not in dados or not dados['nome']:
+            return jsonify({'erro': 'O campo nome é obrigatório.'}), 400
+        
+        # Converter idade para inteiro se fornecida
+        idade_int = None
+        if 'idade' in dados and dados['idade']:
+            try:
+                idade_int = int(dados['idade'])
+            except (ValueError, TypeError):
+                idade_int = 0  # Valor padrão se não for possível converter
+        
+        # Criar novo paciente
+        novo_paciente = Paciente(
+            nome=dados['nome'],
+            idade=idade_int,
+            sexo=dados.get('sexo', '-'),  # Valor padrão se não fornecido
+            telefone=dados.get('telefone', '-')  # Valor padrão se não fornecido
+        )
+        
+        # Salvar no banco de dados
+        db.session.add(novo_paciente)
+        db.session.commit()
+        
+        # Registrar no log
+        logging.info(f"API: Novo paciente cadastrado: {dados['nome']}")
+        
+        return jsonify({
+            'id': novo_paciente.id,
+            'status': 'Paciente cadastrado com sucesso'
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erro ao cadastrar paciente via API: {str(e)}")
+        return jsonify({'erro': f"Erro ao cadastrar: {str(e)}"}), 500
 
 if __name__ == '__main__':
     with app.app_context():
