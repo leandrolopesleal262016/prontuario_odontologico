@@ -337,6 +337,256 @@ def open_browser():
     time.sleep(1.5)  # Aguarda 1.5 segundos para o servidor iniciar
     webbrowser.open('http://127.0.0.1:5000/')
 
+# Rota para listar pacientes (API)
+@app.route('/pacientes')
+def listar_pacientes():
+    try:
+        # Obter parâmetros de filtro (opcional)
+        sexo = request.args.get('sexo')
+        idade = request.args.get('idade')
+        
+        # Construir a query base
+        query = Paciente.query
+        
+        # Aplicar filtros se fornecidos
+        if sexo:
+            query = query.filter(Paciente.sexo == sexo)
+        if idade:
+            try:
+                idade = int(idade)
+                query = query.filter(Paciente.idade == idade)
+            except (TypeError, ValueError):
+                pass
+        
+        # Executar a query
+        pacientes = query.all()
+        
+        # Converter para JSON
+        resultado = []
+        for p in pacientes:
+            resultado.append({
+                'id': p.id,
+                'nome': p.nome,
+                'idade': p.idade,
+                'sexo': p.sexo,
+                'telefone': p.telefone
+            })
+        
+        # Registrar no log
+        logging.info(f"API: Listagem de pacientes retornou {len(resultado)} resultados")
+        
+        # Retornar como JSON
+        return jsonify(resultado)
+    
+    except Exception as e:
+        logging.error(f"Erro ao listar pacientes via API: {str(e)}")
+        return jsonify({'erro': 'Erro interno do servidor'}), 500
+
+# Rota para buscar paciente por nome
+@app.route('/paciente/nome/<nome>')
+def buscar_paciente_nome(nome):
+    try:
+        # Busca pacientes que contenham o nome fornecido
+        pacientes = Paciente.query.filter(Paciente.nome.like(f'%{nome}%')).all()
+        
+        if not pacientes:
+            return jsonify({'mensagem': 'Nenhum paciente encontrado com esse nome'}), 404
+        
+        # Converter para JSON
+        resultado = []
+        for p in pacientes:
+            # Buscar prontuários do paciente
+            prontuarios_lista = []
+            for pront in p.prontuarios:
+                prontuarios_lista.append({
+                    'data_consulta': pront.data_consulta.strftime('%Y-%m-%d') if pront.data_consulta else None,
+                    'diagnostico': pront.diagnostico,
+                    'procedimento': pront.procedimento,
+                    'prescricao': pront.prescricao,
+                    'recomendacoes': pront.recomendacoes,
+                    'anexos': pront.anexos
+                })
+            
+            resultado.append({
+                'id': p.id,
+                'nome': p.nome,
+                'idade': p.idade,
+                'sexo': p.sexo,
+                'telefone': p.telefone,
+                'prontuarios': prontuarios_lista
+            })
+        
+        logging.info(f"API: Busca por nome '{nome}' retornou {len(resultado)} resultados")
+        return jsonify(resultado)
+    
+    except Exception as e:
+        logging.error(f"Erro ao buscar paciente por nome: {str(e)}")
+        return jsonify({'erro': 'Erro interno do servidor'}), 500
+
+# Rota para buscar paciente por ID
+@app.route('/paciente/<int:id>')
+def buscar_paciente_id(id):
+    try:
+        paciente = Paciente.query.get_or_404(id)
+        
+        # Buscar prontuários do paciente
+        prontuarios_lista = []
+        for pront in paciente.prontuarios:
+            prontuarios_lista.append({
+                'data_consulta': pront.data_consulta.strftime('%Y-%m-%d') if pront.data_consulta else None,
+                'diagnostico': pront.diagnostico,
+                'procedimento': pront.procedimento,
+                'prescricao': pront.prescricao,
+                'recomendacoes': pront.recomendacoes,
+                'anexos': pront.anexos
+            })
+        
+        resultado = {
+            'nome': paciente.nome,
+            'idade': paciente.idade,
+            'sexo': paciente.sexo,
+            'telefone': paciente.telefone,
+            'prontuarios': prontuarios_lista
+        }
+        
+        logging.info(f"API: Busca por ID {id} retornou paciente {paciente.nome}")
+        return jsonify(resultado)
+    
+    except Exception as e:
+        logging.error(f"Erro ao buscar paciente por ID: {str(e)}")
+        return jsonify({'erro': 'Erro interno do servidor'}), 500
+
+# Rota para gerenciar agenda
+@app.route('/agenda', methods=['GET', 'POST'])
+def agenda():
+    if request.method == 'GET':
+        try:
+            # Obter data do parâmetro de consulta
+            data_str = request.args.get('data')
+            if not data_str:
+                return jsonify({'erro': 'Parâmetro data é obrigatório'}), 400
+            
+            # Converter string para data
+            try:
+                data = datetime.datetime.strptime(data_str, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'erro': 'Formato de data inválido. Use YYYY-MM-DD'}), 400
+            
+            # Buscar agendamentos para a data
+            agendamentos = Agenda.query.filter(Agenda.data_agenda == data).all()
+            
+            # Converter para JSON
+            resultado = []
+            for a in agendamentos:
+                paciente = Paciente.query.get(a.paciente_id)
+                resultado.append({
+                    'paciente': paciente.nome if paciente else 'Paciente não encontrado',
+                    'data_agenda': a.data_agenda.strftime('%Y-%m-%d'),
+                    'observacoes': a.observacoes
+                })
+            
+            logging.info(f"API: Listagem de agenda para {data_str} retornou {len(resultado)} agendamentos")
+            return jsonify(resultado)
+        
+        except Exception as e:
+            logging.error(f"Erro ao listar agenda: {str(e)}")
+            return jsonify({'erro': 'Erro interno do servidor'}), 500
+    
+    elif request.method == 'POST':
+        try:
+            # Obter dados do corpo da requisição
+            dados = request.json
+            
+            # Validar dados
+            if not dados or 'paciente_id' not in dados or 'data_agenda' not in dados:
+                return jsonify({'erro': 'Dados incompletos. Forneça paciente_id e data_agenda'}), 400
+            
+            # Verificar se o paciente existe
+            paciente = Paciente.query.get(dados['paciente_id'])
+            if not paciente:
+                return jsonify({'erro': 'Paciente não encontrado'}), 404
+            
+            # Converter string para data
+            try:
+                data_agenda = datetime.datetime.strptime(dados['data_agenda'], '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'erro': 'Formato de data inválido. Use YYYY-MM-DD'}), 400
+            
+            # Criar novo agendamento
+            agendamento = Agenda(
+                paciente_id=dados['paciente_id'],
+                data_agenda=data_agenda,
+                observacoes=dados.get('observacoes', '')
+            )
+            
+            # Salvar no banco de dados
+            db.session.add(agendamento)
+            db.session.commit()
+            
+            logging.info(f"API: Novo agendamento criado para paciente {paciente.nome} em {dados['data_agenda']}")
+            return jsonify({'status': 'Consulta agendada com sucesso'})
+        
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Erro ao agendar consulta: {str(e)}")
+            return jsonify({'erro': 'Erro interno do servidor'}), 500
+
+# Rota para criar prontuário
+@app.route('/prontuario', methods=['POST'])
+def criar_prontuario_api():
+    try:
+        # Obter dados do corpo da requisição
+        dados = request.json
+        
+        # Validar dados
+        if not dados or 'paciente_id' not in dados:
+            return jsonify({'erro': 'Dados incompletos. Forneça pelo menos paciente_id'}), 400
+        
+        # Verificar se o paciente existe
+        paciente = Paciente.query.get(dados['paciente_id'])
+        if not paciente:
+            return jsonify({'erro': 'Paciente não encontrado'}), 404
+        
+        # Processar anexos se existirem
+        anexos_str = ""
+        if 'anexos' in dados and dados['anexos']:
+            anexos_lista = []
+            for anexo in dados['anexos']:
+                if 'descricao' in anexo and 'link' in anexo:
+                    anexos_lista.append(f"{anexo['descricao']}: {anexo['link']}")
+            anexos_str = "\n".join(anexos_lista)
+        
+        # Processar prescrição se existir
+        prescricao_str = ""
+        if 'prescricao' in dados and dados['prescricao']:
+            if isinstance(dados['prescricao'], list):
+                prescricao_str = "\n".join(dados['prescricao'])
+            else:
+                prescricao_str = dados['prescricao']
+        
+        # Criar novo prontuário
+        prontuario = Prontuario(
+            paciente_id=dados['paciente_id'],
+            data_consulta=datetime.date.today(),
+            diagnostico=dados.get('diagnostico', ''),
+            procedimento=dados.get('procedimento', ''),
+            prescricao=prescricao_str,
+            recomendacoes=dados.get('recomendacoes', ''),
+            anexos=anexos_str
+        )
+        
+        # Salvar no banco de dados
+        db.session.add(prontuario)
+        db.session.commit()
+        
+        logging.info(f"API: Novo prontuário criado para paciente {paciente.nome}")
+        return jsonify({'status': 'Prontuário criado com sucesso'})
+    
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erro ao criar prontuário: {str(e)}")
+        return jsonify({'erro': 'Erro interno do servidor'}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

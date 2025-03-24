@@ -324,3 +324,27 @@ paths:
                 properties:
                   resposta:
                     type: string
+
+  /admin:
+    get:
+      operationId: admin_dashboard
+      summary: Acessar o dashboard administrativo
+      responses:
+        '200':
+          description: Dashboard administrativo
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /admin/logs:
+    get:
+      operationId: view_logs
+      summary: Visualizar logs do sistema
+      responses:
+        '200':
+          description: Logs do sistema
+          content:
+            text/html:
+              schema:
+                type: string
