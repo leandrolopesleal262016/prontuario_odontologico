@@ -625,6 +625,33 @@ def criar_paciente_api():
         if not dados or 'nome' not in dados or not dados['nome']:
             return jsonify({'erro': 'O campo nome é obrigatório.'}), 400
         
+        # Verificar se já existe um paciente com o mesmo nome
+        paciente_existente = Paciente.query.filter(Paciente.nome == dados['nome']).first()
+        if paciente_existente:
+            # Se já existe, atualiza os dados em vez de criar um novo
+            if 'idade' in dados and dados['idade']:
+                try:
+                    paciente_existente.idade = int(dados['idade'])
+                except (ValueError, TypeError):
+                    pass  # Ignora se não for possível converter
+            
+            if 'sexo' in dados and dados['sexo']:
+                paciente_existente.sexo = dados['sexo']
+            
+            if 'telefone' in dados and dados['telefone']:
+                paciente_existente.telefone = dados['telefone']
+            
+            # Salvar alterações
+            db.session.commit()
+            
+            logging.info(f"API: Paciente existente atualizado: {paciente_existente.nome} (ID: {paciente_existente.id})")
+            return jsonify({
+                'id': paciente_existente.id,
+                'status': 'Paciente atualizado com sucesso',
+                'acao': 'atualizado'
+            })
+        
+        # Se não existe, cria um novo paciente
         # Converter idade para inteiro se fornecida
         idade_int = None
         if 'idade' in dados and dados['idade']:
@@ -650,13 +677,96 @@ def criar_paciente_api():
         
         return jsonify({
             'id': novo_paciente.id,
-            'status': 'Paciente cadastrado com sucesso'
+            'status': 'Paciente cadastrado com sucesso',
+            'acao': 'criado'
         })
     
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Erro ao cadastrar paciente via API: {str(e)}")
-        return jsonify({'erro': f"Erro ao cadastrar: {str(e)}"}), 500
+        logging.error(f"Erro ao cadastrar/atualizar paciente via API: {str(e)}")
+        return jsonify({'erro': f"Erro ao processar: {str(e)}"}), 500
+
+@app.route('/paciente/atualizar', methods=['PUT', 'POST'])
+def atualizar_paciente_api():
+    try:
+        # Obter dados do corpo da requisição
+        dados = request.json
+        
+        # Validar dados
+        if not dados or 'nome' not in dados or not dados['nome']:
+            return jsonify({'erro': 'O campo nome é obrigatório.'}), 400
+        
+        # Buscar paciente pelo nome (exato)
+        paciente = Paciente.query.filter(Paciente.nome == dados['nome']).first()
+        
+        # Se não encontrar com nome exato, tenta buscar por nome similar
+        if not paciente:
+            pacientes_similares = Paciente.query.filter(Paciente.nome.like(f"%{dados['nome']}%")).all()
+            if pacientes_similares:
+                # Se encontrar apenas um paciente similar, usa ele
+                if len(pacientes_similares) == 1:
+                    paciente = pacientes_similares[0]
+                else:
+                    # Se encontrar múltiplos, retorna erro com lista de pacientes encontrados
+                    return jsonify({
+                        'erro': 'Múltiplos pacientes encontrados com nome similar',
+                        'pacientes': [{'id': p.id, 'nome': p.nome} for p in pacientes_similares]
+                    }), 409  # Conflict
+        
+        # Se não encontrou nenhum paciente, cria um novo
+        if not paciente:
+            # Converter idade para inteiro se fornecida
+            idade_int = None
+            if 'idade' in dados and dados['idade']:
+                try:
+                    idade_int = int(dados['idade'])
+                except (ValueError, TypeError):
+                    idade_int = 0
+            
+            # Criar novo paciente
+            paciente = Paciente(
+                nome=dados['nome'],
+                idade=idade_int,
+                sexo=dados.get('sexo', '-'),
+                telefone=dados.get('telefone', '-')
+            )
+            db.session.add(paciente)
+            db.session.commit()
+            
+            logging.info(f"API: Novo paciente cadastrado: {dados['nome']}")
+            return jsonify({
+                'id': paciente.id,
+                'status': 'Paciente cadastrado com sucesso',
+                'acao': 'criado'
+            })
+        
+        # Atualizar dados do paciente existente
+        if 'idade' in dados and dados['idade']:
+            try:
+                paciente.idade = int(dados['idade'])
+            except (ValueError, TypeError):
+                pass  # Ignora se não for possível converter
+        
+        if 'sexo' in dados and dados['sexo']:
+            paciente.sexo = dados['sexo']
+        
+        if 'telefone' in dados and dados['telefone']:
+            paciente.telefone = dados['telefone']
+        
+        # Salvar alterações
+        db.session.commit()
+        
+        logging.info(f"API: Paciente atualizado: {paciente.nome} (ID: {paciente.id})")
+        return jsonify({
+            'id': paciente.id,
+            'status': 'Paciente atualizado com sucesso',
+            'acao': 'atualizado'
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erro ao atualizar paciente via API: {str(e)}")
+        return jsonify({'erro': f"Erro ao atualizar: {str(e)}"}), 500
 
 if __name__ == '__main__':
     with app.app_context():

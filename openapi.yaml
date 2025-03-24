@@ -236,7 +236,7 @@ paths:
   /paciente:
     post:
       operationId: criar_paciente_api
-      summary: Cadastrar novo paciente (API)
+      summary: Cadastrar ou atualizar paciente (verifica se já existe pelo nome)
       requestBody:
         required: true
         content:
@@ -260,7 +260,7 @@ paths:
                   description: Telefone do paciente (opcional)
       responses:
         '200':
-          description: Paciente cadastrado com sucesso
+          description: Paciente cadastrado ou atualizado com sucesso
           content:
             application/json:
               schema:
@@ -270,6 +270,68 @@ paths:
                     type: integer
                   status:
                     type: string
+                  acao:
+                    type: string
+                    enum: [criado, atualizado]
+
+  /paciente/atualizar:
+    put:
+      operationId: atualizar_paciente_api
+      summary: Atualizar dados de um paciente existente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nome
+              properties:
+                nome:
+                  type: string
+                  description: Nome do paciente para busca (obrigatório)
+                idade:
+                  type: integer
+                  description: Nova idade do paciente (opcional)
+                sexo:
+                  type: string
+                  description: Novo sexo do paciente (opcional)
+                telefone:
+                  type: string
+                  description: Novo telefone do paciente (opcional)
+      responses:
+        '200':
+          description: Paciente atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  status:
+                    type: string
+                  acao:
+                    type: string
+                    enum: [atualizado, criado]
+        '409':
+          description: Múltiplos pacientes encontrados com nome similar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  erro:
+                    type: string
+                  pacientes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        nome:
+                          type: string
 
   /paciente/{paciente_id}/prontuarios:
     get:
