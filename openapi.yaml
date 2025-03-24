@@ -3,45 +3,43 @@ info:
   title: API Prontuário Odontológico
   version: '1.0'
   description: API para gerenciar pacientes, agendamentos e prontuários odontológicos.
+  contact:
+    name: Suporte Técnico
+    email: suporte@prontuarioodontologico.com
+
+servers:
+  - url: http://localhost:5000
+    description: Servidor de desenvolvimento local
 
 paths:
-  /api/agenda:
+  /api/pacientes:
     get:
-      summary: Listar consultas do dia
+      summary: Listar todos os pacientes cadastrados
       parameters:
-        - name: data
+        - name: sexo
           in: query
-          description: Data no formato YYYY-MM-DD
-          required: true
+          required: false
           schema:
             type: string
+            enum: [M, F]
+          description: Filtrar por sexo (M ou F)
+        - name: idade
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filtrar por idade
       responses:
         '200':
-          description: Lista de consultas agendadas
+          description: Lista de pacientes
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: object
-    post:
-      summary: Agendar consulta para paciente
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                paciente_id:
-                  type: integer
-                data_agenda:
-                  type: string
-                observacoes:
-                  type: string
-      responses:
-        '200':
-          description: Consulta agendada com sucesso
+                  $ref: '#/components/schemas/Paciente'
+        '500':
+          description: Erro interno do servidor
 
   /api/paciente/{id}:
     get:
@@ -52,13 +50,58 @@ paths:
           required: true
           schema:
             type: integer
+          description: ID do paciente
       responses:
         '200':
-          description: Informações completas do paciente e seus prontuários
+          description: Dados do paciente
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/PacienteDetalhado'
+        '404':
+          description: Paciente não encontrado
+        '500':
+          description: Erro interno do servidor
+    
+    put:
+      summary: Atualizar dados do paciente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do paciente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PacienteInput'
+      responses:
+        '200':
+          description: Paciente atualizado com sucesso
+        '404':
+          description: Paciente não encontrado
+        '500':
+          description: Erro interno do servidor
+    
+    delete:
+      summary: Excluir paciente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do paciente
+      responses:
+        '200':
+          description: Paciente excluído com sucesso
+        '404':
+          description: Paciente não encontrado
+        '500':
+          description: Erro interno do servidor
 
   /api/paciente/nome/{nome}:
     get:
@@ -69,6 +112,7 @@ paths:
           required: true
           schema:
             type: string
+          description: Nome ou parte do nome do paciente
       responses:
         '200':
           description: Lista de pacientes com nome correspondente
@@ -77,31 +121,32 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
+                  $ref: '#/components/schemas/Paciente'
+        '404':
+          description: Nenhum paciente encontrado
+        '500':
+          description: Erro interno do servidor
 
-  /api/pacientes:
-    get:
-      summary: Listar todos os pacientes cadastrados (com ou sem filtros)
-      parameters:
-        - name: sexo
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: idade
-          in: query
-          required: false
-          schema:
-            type: integer
+  /api/paciente:
+    post:
+      summary: Cadastrar novo paciente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PacienteInput'
       responses:
-        '200':
-          description: Lista completa ou filtrada de pacientes
+        '201':
+          description: Paciente cadastrado com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
+                $ref: '#/components/schemas/Paciente'
+        '400':
+          description: Dados inválidos
+        '500':
+          description: Erro interno do servidor
 
   /api/prontuario:
     post:
@@ -111,29 +156,414 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                paciente_id:
-                  type: integer
-                diagnostico:
-                  type: string
-                procedimento:
-                  type: string
-                prescricao:
-                  type: array
-                  items:
-                    type: string
-                recomendacoes:
-                  type: string
-                anexos:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      descricao:
-                        type: string
-                      link:
-                        type: string
+              $ref: '#/components/schemas/ProntuarioInput'
+      responses:
+        '201':
+          description: Prontuário criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prontuario'
+        '400':
+          description: Dados inválidos
+        '404':
+          description: Paciente não encontrado
+        '500':
+          description: Erro interno do servidor
+
+  /api/prontuario/{id}:
+    get:
+      summary: Buscar prontuário por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do prontuário
       responses:
         '200':
-          description: Prontuário criado com sucesso
+          description: Dados do prontuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prontuario'
+        '404':
+          description: Prontuário não encontrado
+        '500':
+          description: Erro interno do servidor
+    
+    put:
+      summary: Atualizar prontuário
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do prontuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProntuarioInput'
+      responses:
+        '200':
+          description: Prontuário atualizado com sucesso
+        '404':
+          description: Prontuário não encontrado
+        '500':
+          description: Erro interno do servidor
+    
+    delete:
+      summary: Excluir prontuário
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do prontuário
+      responses:
+        '200':
+          description: Prontuário excluído com sucesso
+        '404':
+          description: Prontuário não encontrado
+        '500':
+          description: Erro interno do servidor
+
+  /api/paciente/{paciente_id}/prontuarios:
+    get:
+      summary: Listar prontuários de um paciente
+      parameters:
+        - name: paciente_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do paciente
+      responses:
+        '200':
+          description: Lista de prontuários do paciente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Prontuario'
+        '404':
+          description: Paciente não encontrado
+        '500':
+          description: Erro interno do servidor
+
+  /api/agenda:
+    get:
+      summary: Listar consultas agendadas
+      parameters:
+        - name: data
+          in: query
+          description: Data no formato YYYY-MM-DD
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Lista de consultas agendadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Agenda'
+        '500':
+          description: Erro interno do servidor
+    
+    post:
+      summary: Agendar consulta para paciente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgendaInput'
+      responses:
+        '201':
+          description: Consulta agendada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agenda'
+        '400':
+          description: Dados inválidos
+        '404':
+          description: Paciente não encontrado
+        '500':
+          description: Erro interno do servidor
+
+  /api/agenda/{id}:
+    get:
+      summary: Buscar agendamento por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do agendamento
+      responses:
+        '200':
+          description: Dados do agendamento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agenda'
+        '404':
+          description: Agendamento não encontrado
+        '500':
+          description: Erro interno do servidor
+    
+    put:
+      summary: Atualizar agendamento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do agendamento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgendaInput'
+      responses:
+        '200':
+          description: Agendamento atualizado com sucesso
+        '404':
+          description: Agendamento não encontrado
+        '500':
+          description: Erro interno do servidor
+    
+    delete:
+      summary: Cancelar agendamento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID do agendamento
+      responses:
+        '200':
+          description: Agendamento cancelado com sucesso
+        '404':
+          description: Agendamento não encontrado
+        '500':
+          description: Erro interno do servidor
+
+  /processar_comando:
+    post:
+      summary: Processar comando de voz do assistente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comando:
+                  type: string
+                  description: Comando de voz a ser processado
+      responses:
+        '200':
+          description: Resposta do assistente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resposta:
+                    type: string
+                    description: Resposta do assistente
+        '400':
+          description: Comando inválido
+        '500':
+          description: Erro interno do servidor
+
+components:
+  schemas:
+    Paciente:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID único do paciente
+        nome:
+          type: string
+          description: Nome completo do paciente
+        idade:
+          type: integer
+          description: Idade do paciente
+        sexo:
+          type: string
+          description: Sexo do paciente (M ou F)
+        telefone:
+          type: string
+          description: Número de telefone do paciente
+      required:
+        - id
+        - nome
+        - idade
+        - sexo
+
+    PacienteInput:
+      type: object
+      properties:
+        nome:
+          type: string
+          description: Nome completo do paciente
+        idade:
+          type: integer
+          description: Idade do paciente
+        sexo:
+          type: string
+          description: Sexo do paciente (M ou F)
+        telefone:
+          type: string
+          description: Número de telefone do paciente
+      required:
+        - nome
+        - idade
+        - sexo
+
+    PacienteDetalhado:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID único do paciente
+        nome:
+          type: string
+          description: Nome completo do paciente
+        idade:
+          type: integer
+          description: Idade do paciente
+        sexo:
+          type: string
+          description: Sexo do paciente (M ou F)
+        telefone:
+          type: string
+          description: Número de telefone do paciente
+        prontuarios:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prontuario'
+          description: Lista de prontuários do paciente
+      required:
+        - id
+        - nome
+        - idade
+        - sexo
+
+    Prontuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID único do prontuário
+        paciente_id:
+          type: integer
+          description: ID do paciente associado
+        data_consulta:
+          type: string
+          format: date
+          description: Data da consulta
+        diagnostico:
+          type: string
+          description: Diagnóstico realizado
+        procedimento:
+          type: string
+          description: Procedimento realizado
+        prescricao:
+          type: string
+          description: Medicamentos prescritos
+        recomendacoes:
+          type: string
+          description: Recomendações pós-tratamento
+        anexos:
+          type: string
+          description: Anexos (links ou referências)
+      required:
+        - id
+        - paciente_id
+        - data_consulta
+
+    ProntuarioInput:
+      type: object
+      properties:
+        paciente_id:
+          type: integer
+          description: ID do paciente associado
+        data_consulta:
+          type: string
+          format: date
+          description: Data da consulta
+        diagnostico:
+          type: string
+          description: Diagnóstico realizado
+        procedimento:
+          type: string
+          description: Procedimento realizado
+        prescricao:
+          type: string
+          description: Medicamentos prescritos
+        recomendacoes:
+          type: string
+          description: Recomendações pós-tratamento
+        anexos:
+          type: string
+          description: Anexos (links ou referências)
+      required:
+        - paciente_id
+        - data_consulta
+
+    Agenda:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID único do agendamento
+        paciente_id:
+          type: integer
+          description: ID do paciente associado
+        data_agenda:
+          type: string
+          format: date
+          description: Data do agendamento
+        observacoes:
+          type: string
+          description: Observações sobre o agendamento
+      required:
+        - id
+        - paciente_id
+        - data_agenda
+
+    AgendaInput:
+      type: object
+      properties:
+        paciente_id:
+          type: integer
+          description: ID do paciente associado
+        data_agenda:
+          type: string
+          format: date
+          description: Data do agendamento
+        observacoes:
+          type: string
+          description: Observações sobre o agendamento
+      required:
+        - paciente_id
+        - data_agenda
