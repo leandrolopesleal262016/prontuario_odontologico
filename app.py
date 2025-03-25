@@ -54,46 +54,119 @@ def assistente_voz():
 
 @app.route('/processar_comando', methods=['POST'])
 def processar_comando():
-    import openai
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-    comando = request.json.get('comando')
-
-    # O GPT só devolve a "ação"
-    resposta = client.chat.completions.create(
-        model="gpt-4-turbo",
-        messages=[
-            {"role": "system", "content": "Você é um assistente odontológico. Sempre responda apenas com o comando necessário, como: listar_pacientes, ou cadastrar_paciente Nome Idade Sexo. Não forneça explicações."},
-            {"role": "user", "content": comando}
-        ]
-    )
-
-    acao = resposta.choices[0].message.content.strip().lower()
-    texto_resposta = ""
-
-    if "listar_pacientes" in acao:
-        pacientes = Paciente.query.all()
-        lista = ", ".join([p.nome for p in pacientes])
-        texto_resposta = f"Pacientes cadastrados: {lista if lista else 'Nenhum paciente encontrado.'}"
-
-    elif "cadastrar_paciente" in acao:
+    try:
+        import openai
+        
+        # Obter a chave da API
+        api_key = os.getenv("OPENAI_API_KEY")
+        
+        if not api_key:
+            logging.error("OPENAI_API_KEY não está configurada")
+            return jsonify({'resposta': 'Erro: Chave da API OpenAI não configurada. Contate o administrador.'}), 500
+        
+        # Verificar a versão da biblioteca OpenAI e inicializar o cliente adequadamente
+        comando = request.json.get('comando')
+        
         try:
-            partes = acao.replace("cadastrar_paciente", "").strip().split()
-            nome = partes[0]
-            idade = int(partes[1])
-            sexo = partes[2].capitalize()
-            novo = Paciente(nome=nome, idade=idade, sexo=sexo, telefone="-")
-            db.session.add(novo)
-            db.session.commit()
-            texto_resposta = f"Paciente {nome} cadastrado com sucesso!"
-        except Exception as e:
-            texto_resposta = "Erro ao cadastrar. Use: cadastrar_paciente Nome Idade Sexo"
-
-    else:
-        texto_resposta = "Comando não reconhecido. Exemplo: 'listar_pacientes' ou 'cadastrar_paciente João 30 M'."
-
-    return jsonify({'resposta': texto_resposta})
+            # Tente o método mais recente (OpenAI v1.x)
+            client = openai.OpenAI(api_key=api_key)
+            
+            resposta = client.chat.completions.create(
+                model="gpt-4-turbo",
+                messages=[
+                    {"role": "system", "content": "Você é um assistente odontológico. Sempre responda apenas com o comando necessário, como: listar_pacientes, cadastrar_paciente Nome Idade Sexo, ou cancelar_agendamento Nome Data. Não forneça explicações."},
+                    {"role": "user", "content": comando}
+                ]
+            )
+            
+            acao = resposta.choices[0].message.content.strip().lower()
+            
+        except (AttributeError, TypeError):
+            # Fallback para o método antigo (OpenAI v0.x)
+            logging.info("Usando API OpenAI legada")
+            resposta = openai.ChatCompletion.create(
+                model="gpt-4-turbo",
+                messages=[
+                    {"role": "system", "content": "Você é um assistente odontológico. Sempre responda apenas com o comando necessário, como: listar_pacientes, cadastrar_paciente Nome Idade Sexo, ou cancelar_agendamento Nome Data. Não forneça explicações."},
+                    {"role": "user", "content": comando}
+                ]
+            )
+            
+            acao = resposta.choices[0].message.content.strip().lower()
+        
+        texto_resposta = ""
+        
+        if "listar_pacientes" in acao:
+            pacientes = Paciente.query.all()
+            lista = ", ".join([p.nome for p in pacientes])
+            texto_resposta = f"Pacientes cadastrados: {lista if lista else 'Nenhum paciente encontrado.'}"
+            
+        elif "cadastrar_paciente" in acao:
+            try:
+                partes = acao.replace("cadastrar_paciente", "").strip().split()
+                nome = partes[0]
+                idade = int(partes[1])
+                sexo = partes[2].capitalize()
+                
+                # Verificar se já existe um paciente com o mesmo nome
+                paciente_existente = Paciente.query.filter(Paciente.nome == nome).first()
+                if paciente_existente:
+                    texto_resposta = f"Paciente {nome} já existe no sistema."
+                else:
+                    novo = Paciente(nome=nome, idade=idade, sexo=sexo, telefone="-")
+                    db.session.add(novo)
+                    db.session.commit()
+                    texto_resposta = f"Paciente {nome} cadastrado com sucesso!"
+            except Exception as e:
+                texto_resposta = f"Erro ao cadastrar: {str(e)}. Use: cadastrar_paciente Nome Idade Sexo"
+                
+        elif "cancelar_agendamento" in acao:
+            try:
+                # Extrair nome e data
+                partes = acao.replace("cancelar_agendamento", "").strip().split()
+                if len(partes) < 2:
+                    texto_resposta = "Formato inválido. Use: cancelar_agendamento Nome YYYY-MM-DD"
+                else:
+                    nome = partes[0]
+                    data_str = partes[1]
+                    
+                    # Buscar o paciente
+                    paciente = Paciente.query.filter(Paciente.nome.like(f"%{nome}%")).first()
+                    if not paciente:
+                        texto_resposta = f"Paciente {nome} não encontrado."
+                    else:
+                        # Converter string para data
+                        try:
+                            data = datetime.datetime.strptime(data_str, '%Y-%m-%d').date()
+                        except ValueError:
+                            texto_resposta = "Formato de data inválido. Use YYYY-MM-DD"
+                            return jsonify({'resposta': texto_resposta})
+                        
+                        # Buscar agendamento
+                        agendamento = Agenda.query.filter_by(
+                            paciente_id=paciente.id,
+                            data_agenda=data
+                        ).first()
+                        
+                        if not agendamento:
+                            texto_resposta = f"Nenhum agendamento encontrado para {nome} na data {data_str}."
+                        else:
+                            # Excluir agendamento
+                            db.session.delete(agendamento)
+                            db.session.commit()
+                            texto_resposta = f"Agendamento de {nome} para {data_str} cancelado com sucesso."
+            except Exception as e:
+                db.session.rollback()
+                texto_resposta = f"Erro ao cancelar agendamento: {str(e)}"
+                
+        else:
+            texto_resposta = "Comando não reconhecido. Exemplos: 'listar_pacientes', 'cadastrar_paciente João 30 M', 'cancelar_agendamento João 2025-04-01'."
+            
+        return jsonify({'resposta': texto_resposta})
+        
+    except Exception as e:
+        logging.error(f"Erro ao processar comando: {str(e)}")
+        return jsonify({'resposta': f"Erro ao processar comando: {str(e)}"}), 500
 
 # Adicione estas novas rotas ao seu arquivo app.py
 
