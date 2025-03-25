@@ -181,6 +181,9 @@ def ver_prontuarios(paciente_id):
     hoje = datetime.date.today()
     agendamentos = Agenda.query.filter_by(paciente_id=paciente_id).filter(Agenda.data_agenda >= hoje).order_by(Agenda.data_agenda).all()
     
+    # Adicione este log para debug
+    logging.info(f"Agendamentos encontrados para paciente {paciente_id}: {len(agendamentos)}")
+    
     return render_template('prontuarios.html', 
                           paciente=paciente, 
                           prontuarios=prontuarios,
@@ -865,15 +868,43 @@ def cancelar_agendamento(agendamento_id):
         except Exception as e:
             db.session.rollback()
             logging.error(f"Erro ao cancelar agendamento: {str(e)}")
-            return render_template('cancelar_agendamento.html', 
-                                  agendamento=agendamento, 
-                                  erro=f"Erro ao cancelar: {str(e)}")
+            return redirect(url_for('ver_prontuarios', paciente_id=paciente_id))
     
     # Se for GET, exibe a página de confirmação
     paciente = Paciente.query.get(paciente_id)
     return render_template('cancelar_agendamento.html', 
                           agendamento=agendamento,
                           paciente=paciente)
+
+@app.route('/agendamento/<int:agendamento_id>/cancelar_direto')
+def cancelar_agendamento_direto(agendamento_id):
+    try:
+        agendamento = Agenda.query.get_or_404(agendamento_id)
+        paciente_id = agendamento.paciente_id
+        
+        db.session.delete(agendamento)
+        db.session.commit()
+        
+        logging.info(f"Agendamento ID {agendamento_id} cancelado diretamente")
+        
+        return redirect(url_for('ver_prontuarios', paciente_id=paciente_id))
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erro ao cancelar agendamento diretamente: {str(e)}")
+        return redirect(url_for('ver_prontuarios', paciente_id=paciente_id))
+
+@app.route('/debug/agendamentos/<int:paciente_id>')
+def debug_agendamentos(paciente_id):
+    agendamentos = Agenda.query.filter_by(paciente_id=paciente_id).all()
+    resultado = []
+    for a in agendamentos:
+        resultado.append({
+            'id': a.id,
+            'paciente_id': a.paciente_id,
+            'data_agenda': a.data_agenda.strftime('%Y-%m-%d'),
+            'observacoes': a.observacoes
+        })
+    return jsonify(agendamentos=resultado)
 
 if __name__ == '__main__':
     with app.app_context():

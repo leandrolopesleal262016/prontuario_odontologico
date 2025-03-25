@@ -131,7 +131,9 @@
                             </div>
                         {% endif %}
                         <div style="margin-top: 8px;">
-                            <a href="#" onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')" class="btn btn-danger">Cancelar</a>
+                            <a href="{{ url_for('cancelar_agendamento_direto', agendamento_id=agendamento.id) }}" 
+   onclick="return confirm('Tem certeza que deseja cancelar este agendamento?')" 
+   class="btn btn-danger">Cancelar</a>
 
                         </div>
                     </div>
