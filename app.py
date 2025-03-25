@@ -173,8 +173,18 @@ def processar_comando():
 @app.route('/paciente/<int:paciente_id>/prontuarios')
 def ver_prontuarios(paciente_id):
     paciente = Paciente.query.get_or_404(paciente_id)
+    
+    # Buscar prontuários do paciente
     prontuarios = Prontuario.query.filter_by(paciente_id=paciente_id).order_by(Prontuario.data_consulta.desc()).all()
-    return render_template('prontuarios.html', paciente=paciente, prontuarios=prontuarios)
+    
+    # Buscar agendamentos futuros do paciente
+    hoje = datetime.date.today()
+    agendamentos = Agenda.query.filter_by(paciente_id=paciente_id).filter(Agenda.data_agenda >= hoje).order_by(Agenda.data_agenda).all()
+    
+    return render_template('prontuarios.html', 
+                          paciente=paciente, 
+                          prontuarios=prontuarios,
+                          agendamentos=agendamentos)
 
 @app.route('/paciente/<int:paciente_id>/editar', methods=['GET', 'POST'])
 def editar_paciente(paciente_id):
@@ -840,6 +850,30 @@ def atualizar_paciente_api():
         db.session.rollback()
         logging.error(f"Erro ao atualizar paciente via API: {str(e)}")
         return jsonify({'erro': f"Erro ao atualizar: {str(e)}"}), 500
+
+@app.route('/agendamento/<int:agendamento_id>/cancelar', methods=['GET', 'POST'])
+def cancelar_agendamento(agendamento_id):
+    agendamento = Agenda.query.get_or_404(agendamento_id)
+    paciente_id = agendamento.paciente_id
+    
+    if request.method == 'POST':
+        try:
+            db.session.delete(agendamento)
+            db.session.commit()
+            logging.info(f"Agendamento ID {agendamento_id} cancelado")
+            return redirect(url_for('ver_prontuarios', paciente_id=paciente_id))
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Erro ao cancelar agendamento: {str(e)}")
+            return render_template('cancelar_agendamento.html', 
+                                  agendamento=agendamento, 
+                                  erro=f"Erro ao cancelar: {str(e)}")
+    
+    # Se for GET, exibe a página de confirmação
+    paciente = Paciente.query.get(paciente_id)
+    return render_template('cancelar_agendamento.html', 
+                          agendamento=agendamento,
+                          paciente=paciente)
 
 if __name__ == '__main__':
     with app.app_context():

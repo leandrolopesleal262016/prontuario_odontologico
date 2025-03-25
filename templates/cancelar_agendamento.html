@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancelar Agendamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-right: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn-danger {
+            background-color: #e74c3c;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cancelar Agendamento</h1>
+        
+        {% if erro %}
+        <div class="alert alert-danger">
+            {{ erro }}
+        </div>
+        {% endif %}
+        
+        <div class="info-box">
+            <p><strong>Paciente:</strong> {{ paciente.nome }}</p>
+            <p><strong>Data:</strong> {{ agendamento.data_agenda.strftime('%d/%m/%Y') }}</p>
+            {% if agendamento.observacoes %}
+            <p><strong>Observações:</strong> {{ agendamento.observacoes }}</p>
+            {% endif %}
+        </div>
+        
+        <p>Tem certeza que deseja cancelar este agendamento?</p>
+        
+        <form method="post">
+            <button type="submit" class="btn btn-danger">Confirmar Cancelamento</button>
+            <a href="{{ url_for('ver_prontuarios', paciente_id=paciente.id) }}" class="btn">Voltar</a>
+        </form>
+    </div>
+</body>
+</html>

@@ -2,19 +2,133 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Novo Prontuário</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Prontuário - {{ paciente.nome }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn-secondary {
+            background-color: #7f8c8d;
+        }
+        .btn-secondary:hover {
+            background-color: #636e72;
+        }
+        .error {
+            color: #e74c3c;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #fadbd8;
+            border-radius: 4px;
+        }
+        .patient-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-3xl mx-auto">
-        <h1 class="text-2xl font-bold mb-6">Novo Prontuário - {{ paciente.nome }}</h1>
-        <form action="/paciente/{{ paciente.id }}/novo_prontuario" method="POST" class="space-y-4 bg-white p-6 rounded shadow">
-            <textarea name="diagnostico" placeholder="Diagnóstico" class="w-full border p-2 rounded" required></textarea>
-            <textarea name="procedimento" placeholder="Procedimento" class="w-full border p-2 rounded" required></textarea>
-            <textarea name="prescricao" placeholder="Prescrição" class="w-full border p-2 rounded"></textarea>
-            <textarea name="recomendacoes" placeholder="Recomendações" class="w-full border p-2 rounded"></textarea>
-            <input type="text" name="anexos" placeholder="Links de anexos (separados por vírgula)" class="w-full border p-2 rounded">
-            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Salvar prontuário</button>
+<body>
+    <div class="container">
+        <h1>Novo Prontuário</h1>
+        
+        <div class="patient-info">
+            <h3>Informações do Paciente</h3>
+            <p><strong>Nome:</strong> {{ paciente.nome }}</p>
+            <p><strong>Idade:</strong> {{ paciente.idade }}</p>
+            <p><strong>Sexo:</strong> {{ paciente.sexo }}</p>
+            <p><strong>Telefone:</strong> {{ paciente.telefone }}</p>
+        </div>
+        
+        {% if erro %}
+        <div class="error">
+            {{ erro }}
+        </div>
+        {% endif %}
+        
+        <form action="{{ url_for('novo_prontuario', paciente_id=paciente.id) }}" method="post">
+            <div class="form-group">
+                <label for="data_consulta">Data da Consulta*:</label>
+                <input type="date" id="data_consulta" name="data_consulta" value="{{ today }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="diagnostico">Diagnóstico:</label>
+                <textarea id="diagnostico" name="diagnostico"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="procedimento">Procedimento:</label>
+                <textarea id="procedimento" name="procedimento"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="prescricao">Prescrição:</label>
+                <textarea id="prescricao" name="prescricao"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="recomendacoes">Recomendações:</label>
+                <textarea id="recomendacoes" name="recomendacoes"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="anexos">Anexos/Observações:</label>
+                <textarea id="anexos" name="anexos"></textarea>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn">Salvar Prontuário</button>
+                <a href="{{ url_for('ver_prontuarios', paciente_id=paciente.id) }}" class="btn btn-secondary" style="margin-left: 10px;">Cancelar</a>
+            </div>
         </form>
     </div>
 </body>
