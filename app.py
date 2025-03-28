@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory, make_response
+<UPDATED_CODE>from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory, make_response
 from flask_sqlalchemy import SQLAlchemy
 import datetime
 import os
@@ -9,6 +9,8 @@ import time
 from werkzeug.utils import secure_filename
 import uuid
 from dotenv import load_dotenv
+from sqlalchemy import text
+
 
 load_dotenv()
 
@@ -390,14 +392,45 @@ def excluir_paciente(paciente_id):
     
     if request.method == 'POST':
         try:
-            # Primeiro excluir todos os prontuários associados
+            # Primeiro excluir todos os agendamentos associados
+            Agenda.query.filter_by(paciente_id=paciente_id).delete()
+            
+            # Excluir todos os prontuários associados
+            prontuarios = Prontuario.query.filter_by(paciente_id=paciente_id).all()
+            
+            # Se existir a tabela de imagens, excluir as imagens associadas aos prontuários
+            try:
+                for prontuario in prontuarios:
+                    # Tentar excluir imagens associadas ao prontuário
+                    try:
+                        ImagemProntuario.query.filter_by(prontuario_id=prontuario.id).delete()
+                    except Exception as img_err:
+                        logging.warning(f"Erro ao excluir imagens do prontuário {prontuario.id}: {str(img_err)}")
+            except Exception as table_err:
+                logging.warning(f"Tabela de imagens pode não existir: {str(table_err)}")
+            
+            # Agora excluir os prontuários
             Prontuario.query.filter_by(paciente_id=paciente_id).delete()
             
-            # Depois excluir o paciente
+            # Finalmente excluir o paciente
             db.session.delete(paciente)
+            
+            # Executar uma instrução SQL para resetar a sequência de IDs
+            # Isso é específico para SQLite
+            try:
+                # Obter o maior ID atual
+                max_id_result = db.session.execute(text("SELECT MAX(id) FROM paciente")).fetchone()
+                max_id = max_id_result[0] if max_id_result[0] is not None else 0
+                
+                # Resetar a sequência para o próximo ID após o máximo atual
+                db.session.execute(text(f"UPDATE sqlite_sequence SET seq = {max_id} WHERE name = 'paciente'"))
+                logging.info(f"Sequência de IDs resetada para paciente: {max_id}")
+            except Exception as seq_err:
+                logging.warning(f"Erro ao resetar sequência de IDs: {str(seq_err)}")
+            
             db.session.commit()
             
-            logging.info(f"Paciente ID {paciente_id} excluído: {paciente.nome}")
+            logging.info(f"Paciente ID {paciente_id} excluído completamente: {paciente.nome}")
             return redirect(url_for('admin_dashboard'))
         except Exception as e:
             db.session.rollback()
@@ -576,10 +609,44 @@ def novo_paciente():
             
             # Salvar no banco de dados
             db.session.add(novo_paciente)
+            db.session.flush()  # Isso atribui um ID ao novo_paciente sem fazer commit
+            
+            # Verificar se o ID já foi usado antes (pode ser um ID de um paciente excluído)
+            # Se for o caso, forçar a atribuição de um novo ID
+            try:
+                from sqlalchemy import text
+                
+                # Obter o maior ID atual
+                max_id_result = db.session.execute(text("SELECT MAX(id) FROM paciente WHERE id != :current_id"), 
+                                                  {"current_id": novo_paciente.id}).fetchone()
+                max_id = max_id_result[0] if max_id_result[0] is not None else 0
+                
+                # Se o ID atribuído for menor ou igual ao máximo, forçar um novo ID
+                if novo_paciente.id <= max_id:
+                    # Rollback para desfazer o flush
+                    db.session.rollback()
+                    
+                    # Forçar o próximo ID a ser maior que o máximo atual
+                    db.session.execute(text(f"UPDATE sqlite_sequence SET seq = {max_id} WHERE name = 'paciente'"))
+                    
+                    # Criar o paciente novamente
+                    novo_paciente = Paciente(
+                        nome=nome,
+                        idade=idade_int,
+                        sexo=sexo or '-',
+                        telefone=telefone or '-'
+                    )
+                    
+                    db.session.add(novo_paciente)
+                    logging.info(f"Forçando novo ID para paciente: {nome} (ID anterior <= {max_id})")
+            except Exception as seq_err:
+                logging.warning(f"Erro ao verificar sequência de IDs: {str(seq_err)}")
+            
+            # Agora fazer o commit
             db.session.commit()
             
             # Registrar no log
-            logging.info(f"Novo paciente cadastrado: {nome}")
+            logging.info(f"Novo paciente cadastrado: {nome} com ID {novo_paciente.id}")
             
             # Responder de acordo com o tipo de requisição
             if request.is_json:
@@ -602,6 +669,7 @@ def novo_paciente():
     
     # Se for GET, apenas exibe o formulário
     return render_template('novo_paciente.html')
+
 
 @app.route('/debug/pacientes')
 def debug_pacientes():
@@ -915,6 +983,34 @@ def criar_prontuario_api():
         logging.error(f"Erro ao criar prontuário: {str(e)}")
         return jsonify({'erro': 'Erro interno do servidor'}), 500
 
+@app.route('/admin/verificar_ids')
+def verificar_ids():
+    try:
+        # Verificar a sequência atual
+        seq_result = db.session.execute(text("SELECT * FROM sqlite_sequence WHERE name = 'paciente'")).fetchone()
+        
+        # Obter todos os IDs de pacientes
+        pacientes = Paciente.query.order_by(Paciente.id).all()
+        ids_pacientes = [p.id for p in pacientes]
+        
+        # Verificar se há lacunas na sequência
+        lacunas = []
+        if ids_pacientes:
+            for i in range(1, max(ids_pacientes)):
+                if i not in ids_pacientes:
+                    lacunas.append(i)
+        
+        return jsonify({
+            'sequencia_atual': dict(seq_result) if seq_result else None,
+            'ids_pacientes': ids_pacientes,
+            'total_pacientes': len(ids_pacientes),
+            'maior_id': max(ids_pacientes) if ids_pacientes else 0,
+            'lacunas': lacunas
+        })
+    except Exception as e:
+        return jsonify({'erro': str(e)})
+
+
 @app.route('/paciente', methods=['POST'])
 def criar_paciente_api():
     try:
@@ -970,10 +1066,42 @@ def criar_paciente_api():
         
         # Salvar no banco de dados
         db.session.add(novo_paciente)
+        db.session.flush()  # Isso atribui um ID ao novo_paciente sem fazer commit
+        
+        # Verificar se o ID já foi usado antes (pode ser um ID de um paciente excluído)
+        # Se for o caso, forçar a atribuição de um novo ID
+        try:
+            # Obter o maior ID atual
+            max_id_result = db.session.execute(text("SELECT MAX(id) FROM paciente WHERE id != :current_id"), 
+                                              {"current_id": novo_paciente.id}).fetchone()
+            max_id = max_id_result[0] if max_id_result[0] is not None else 0
+            
+            # Se o ID atribuído for menor ou igual ao máximo, forçar um novo ID
+            if novo_paciente.id <= max_id:
+                # Rollback para desfazer o flush
+                db.session.rollback()
+                
+                # Forçar o próximo ID a ser maior que o máximo atual
+                db.session.execute(text(f"UPDATE sqlite_sequence SET seq = {max_id} WHERE name = 'paciente'"))
+                
+                # Criar o paciente novamente
+                novo_paciente = Paciente(
+                    nome=dados['nome'],
+                    idade=idade_int,
+                    sexo=dados.get('sexo', '-'),
+                    telefone=dados.get('telefone', '-')
+                )
+                
+                db.session.add(novo_paciente)
+                logging.info(f"Forçando novo ID para paciente: {dados['nome']} (ID anterior <= {max_id})")
+        except Exception as seq_err:
+            logging.warning(f"Erro ao verificar sequência de IDs: {str(seq_err)}")
+        
+        # Agora fazer o commit
         db.session.commit()
         
         # Registrar no log
-        logging.info(f"API: Novo paciente cadastrado: {dados['nome']}")
+        logging.info(f"API: Novo paciente cadastrado: {dados['nome']} com ID {novo_paciente.id}")
         
         return jsonify({
             'id': novo_paciente.id,
@@ -985,6 +1113,7 @@ def criar_paciente_api():
         db.session.rollback()
         logging.error(f"Erro ao cadastrar/atualizar paciente via API: {str(e)}")
         return jsonify({'erro': f"Erro ao processar: {str(e)}"}), 500
+
 
 @app.route('/paciente/atualizar', methods=['PUT', 'POST'])
 def atualizar_paciente_api():
