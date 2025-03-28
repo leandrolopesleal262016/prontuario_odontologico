@@ -418,7 +418,7 @@ paths:
                 type: string
 
   # Novas rotas para gerenciamento de imagens
-  /api/prontuario/{prontuario_id}/imagem:
+  /prontuario/{prontuario_id}/imagem:
     post:
       operationId: api_upload_imagem
       summary: Fazer upload de uma imagem para um prontuário via API (usando URL ou base64)
@@ -617,11 +617,3 @@ paths:
                   pacientes:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        nome:
-                          type: string
-                        idade:
-                          type
