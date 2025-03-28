@@ -192,6 +192,11 @@ def excluir_imagem(imagem_id):
         
         return redirect(url_for('ver_prontuarios', paciente_id=Prontuario.query.get(prontuario_id).paciente_id))
 
+@app.route('/static/uploads/<path:filename>')
+def serve_upload(filename):
+    return send_from_directory('static/uploads', filename)
+
+
 @app.route('/prontuario/<int:prontuario_id>')
 def ver_prontuario(prontuario_id):
     prontuario = Prontuario.query.get_or_404(prontuario_id)

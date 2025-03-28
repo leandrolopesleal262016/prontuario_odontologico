@@ -183,11 +183,30 @@
                     {% endif %}
                     
                     {% if prontuario.anexos %}
-                    <div class="prontuario-info">
-                        <span class="prontuario-label">Anexos:</span>
-                        <p>{{ prontuario.anexos }}</p>
-                    </div>
-                    {% endif %}
+                        <div class="card mt-2">
+                            <div class="card-header">Anexos</div>
+                            <div class="card-body">
+                                {% for linha in prontuario.anexos.split('\n') %}
+                                    {% set anexo = linha.strip() %}
+                                    {% if anexo %}
+                                        {% if anexo.endswith('.jpg') or anexo.endswith('.jpeg') or anexo.endswith('.png') or anexo.endswith('.gif') %}
+                                            <div class="mb-3">
+                                                <img src="{{ anexo }}" alt="Imagem anexada" class="img-fluid" style="max-height: 300px;">
+                                                <div class="mt-1">
+                                                    <a href="{{ anexo }}" target="_blank" class="btn btn-sm btn-primary">Ver em tamanho completo</a>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <p><a href="{{ anexo }}" target="_blank">{{ anexo }}</a></p>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}                    <!-- Adicione este botão para cada prontuário -->
+                    <a href="{{ url_for('ver_prontuario', prontuario_id=prontuario.id) }}" class="btn btn-info btn-sm">
+                        Ver detalhes e imagens
+                    </a>
                 </div>
             {% endfor %}
         {% else %}
