@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload de Imagem - Prontuário</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Enviar imagem para o prontuário</h2>
+        
+        <div class="card">
+            <div class="card-body">
+                <form action="{{ url_for('upload_imagem', prontuario_id=prontuario_id) }}" method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="descricao">Descrição da imagem:</label>
+                        <input type="text" class="form-control" name="descricao" id="descricao" placeholder="Ex: radiografia panorâmica">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="imagem">Selecionar imagem:</label>
+                        <input type="file" class="form-control-file" name="imagem" id="imagem" accept="image/*" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Enviar Imagem</button>
+                    <a href="{{ url_for('ver_prontuario', prontuario_id=prontuario_id) }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

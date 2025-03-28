@@ -110,4 +110,7 @@
                 <hr>
                 
                 <h4>Adicionar Nova Imagem</h4>
+                <a href="{{ url_for('form_upload', prontuario_id=prontuario.id) }}" class="btn btn-primary mb-3">
+                    Adicionar Nova Imagem
+                </a>
                 <form action="{{ url_for('upload_imagem', prontuario_id=prontuario.id) }}" method="post" enctype="multipart/form-data" i

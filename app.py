@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory, make_response
+<UPDATED_CODE>from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory, make_response
 from flask_sqlalchemy import SQLAlchemy
 import datetime
 import os
@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# Configurações para upload de arquivos
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+# Modificar a configuração do diretório de uploads para um local com permissão de escrita no PythonAnywhere
+UPLOAD_FOLDER = os.path.join(os.path.expanduser('~'), 'prontuario_odontologico', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max
 
@@ -83,8 +83,14 @@ def upload_imagem(prontuario_id):
         # Verificar se o prontuário existe
         prontuario = Prontuario.query.get_or_404(prontuario_id)
         
+        # Adicionar log para debug
+        logging.info(f"Recebido pedido de upload para prontuário ID {prontuario_id}")
+        logging.info(f"Arquivos na requisição: {request.files}")
+        logging.info(f"Formulário na requisição: {request.form}")
+        
         # Verificar se o arquivo foi enviado
         if 'imagem' not in request.files:
+            logging.warning("Nenhum arquivo enviado na requisição")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
             return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
@@ -93,6 +99,7 @@ def upload_imagem(prontuario_id):
         
         # Se o usuário não selecionar um arquivo
         if arquivo.filename == '':
+            logging.warning("Nome do arquivo está vazio")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'erro': 'Nenhum arquivo selecionado'}), 400
             return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
@@ -111,6 +118,9 @@ def upload_imagem(prontuario_id):
             
             # Caminho completo do arquivo
             caminho_arquivo = os.path.join(diretorio_prontuario, nome_arquivo)
+            
+            # Adicionar log para debug
+            logging.info(f"Salvando arquivo em: {caminho_arquivo}")
             
             # Salvar o arquivo
             arquivo.save(caminho_arquivo)
@@ -140,6 +150,8 @@ def upload_imagem(prontuario_id):
                 })
             
             return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
+        else:
+            logging.warning(f"Tipo de arquivo não permitido: {arquivo.filename}")
         
         # Se o arquivo não for permitido
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -612,6 +624,46 @@ def open_browser():
     """Função para abrir o navegador após um pequeno atraso"""
     time.sleep(1.5)  # Aguarda 1.5 segundos para o servidor iniciar
     webbrowser.open('http://127.0.0.1:5000/')
+
+@app.route('/prontuario/<int:prontuario_id>/form_upload')
+def form_upload(prontuario_id):
+    # Verificar se o prontuário existe
+    prontuario = Prontuario.query.get_or_404(prontuario_id)
+    return render_template('upload_form.html', prontuario_id=prontuario_id)
+
+
+@app.route('/diagnostico/upload')
+def diagnostico_upload():
+    try:
+        resultado = {
+            'upload_folder': app.config['UPLOAD_FOLDER'],
+            'upload_folder_exists': os.path.exists(app.config['UPLOAD_FOLDER']),
+            'upload_folder_writable': os.access(app.config['UPLOAD_FOLDER'], os.W_OK),
+            'allowed_extensions': list(ALLOWED_EXTENSIONS),
+            'max_content_length': app.config['MAX_CONTENT_LENGTH'],
+            'tabelas_db': []
+        }
+        
+        # Verificar tabelas no banco de dados
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        resultado['tabelas_db'] = inspector.get_table_names()
+        
+        # Tentar criar um arquivo de teste
+        test_file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'test_write.txt')
+        try:
+            with open(test_file_path, 'w') as f:
+                f.write('Teste de escrita')
+            resultado['test_write'] = 'Sucesso'
+            # Limpar arquivo de teste
+            os.remove(test_file_path)
+        except Exception as e:
+            resultado['test_write'] = f'Falha: {str(e)}'
+        
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({'erro': str(e)})
+
 
 # Rota para listar pacientes (API)
 @app.route('/pacientes')
