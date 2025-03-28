@@ -418,10 +418,67 @@ paths:
                 type: string
 
   # Novas rotas para gerenciamento de imagens
-  /prontuario/{prontuario_id}/upload_imagem:
+  /api/prontuario/{prontuario_id}/imagem:
+    post:
+      operationId: api_upload_imagem
+      summary: Fazer upload de uma imagem para um prontuário via API (usando URL ou base64)
+      parameters:
+        - name: prontuario_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                imagem_url:
+                  type: string
+                  description: URL da imagem a ser enviada (alternativa ao base64)
+                imagem_base64:
+                  type: string
+                  description: Dados da imagem em formato base64 (alternativa à URL)
+                descricao:
+                  type: string
+                  description: Descrição opcional da imagem
+      responses:
+        '200':
+          description: Imagem enviada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sucesso:
+                    type: boolean
+                  mensagem:
+                    type: string
+                  imagem:
+                    type: object
+                    properties:
+                      nome:
+                        type: string
+                      descricao:
+                        type: string
+                      url:
+                        type: string
+        '400':
+          description: Erro no upload da imagem
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  erro:
+                    type: string
+
+  /prontuario/{prontuario_id}/upload:
     post:
       operationId: upload_imagem
-      summary: Fazer upload de uma imagem para um prontuário
+      summary: Fazer upload de uma imagem para um prontuário via formulário web
       parameters:
         - name: prontuario_id
           in: path
@@ -443,84 +500,36 @@ paths:
                   type: string
                   description: Descrição opcional da imagem
       responses:
-        '200':
-          description: Imagem enviada com sucesso
-          content:
-            application/json:
+        '302':
+          description: Redirecionamento após upload bem-sucedido
+          headers:
+            Location:
               schema:
-                type: object
-                properties:
-                  sucesso:
-                    type: boolean
-                  id:
-                    type: integer
-                  nome:
-                    type: string
-                  url:
-                    type: string
-        '400':
-          description: Erro no upload da imagem
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  erro:
-                    type: string
+                type: string
 
-  /imagem/{imagem_id}:
+  /static/uploads/{filename}:
     get:
-      operationId: ver_imagem
-      summary: Visualizar uma imagem específica
+      operationId: uploaded_file
+      summary: Acessar uma imagem enviada
       parameters:
-        - name: imagem_id
+        - name: filename
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         '200':
-          description: Imagem
+          description: Arquivo de imagem
           content:
             image/*:
               schema:
                 type: string
                 format: binary
 
-  /imagem/{imagem_id}/excluir:
-    post:
-      operationId: excluir_imagem
-      summary: Excluir uma imagem de um prontuário
-      parameters:
-        - name: imagem_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Imagem excluída com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  sucesso:
-                    type: boolean
-        '500':
-          description: Erro ao excluir imagem
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  erro:
-                    type: string
-
   /prontuario/{prontuario_id}:
     get:
       operationId: ver_prontuario
-      summary: Visualizar um prontuário específico com suas imagens
+      summary: Visualizar um prontuário específico
       parameters:
         - name: prontuario_id
           in: path
@@ -529,40 +538,90 @@ paths:
             type: integer
       responses:
         '200':
-          description: Página do prontuário com imagens
+          description: Página do prontuário
           content:
             text/html:
               schema:
                 type: string
 
-  /prontuario/{prontuario_id}/imagens:
+  /admin/verificar_ids:
     get:
-      operationId: listar_imagens_prontuario
-      summary: Listar todas as imagens de um prontuário
-      parameters:
-        - name: prontuario_id
-          in: path
-          required: true
-          schema:
-            type: integer
+      operationId: verificar_ids
+      summary: Verificar sequência de IDs de pacientes
       responses:
         '200':
-          description: Lista de imagens do prontuário
+          description: Informações sobre IDs de pacientes
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
+                type: object
+                properties:
+                  sequencia_atual:
+                    type: object
+                  ids_pacientes:
+                    type: array
+                    items:
                       type: integer
-                    nome_arquivo:
+                  total_pacientes:
+                    type: integer
+                  maior_id:
+                    type: integer
+                  lacunas:
+                    type: array
+                    items:
+                      type: integer
+
+  /diagnostico/upload:
+    get:
+      operationId: diagnostico_upload
+      summary: Verificar configurações de upload
+      responses:
+        '200':
+          description: Informações de diagnóstico sobre upload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_folder:
+                    type: string
+                  upload_folder_exists:
+                    type: boolean
+                  upload_folder_writable:
+                    type: boolean
+                  allowed_extensions:
+                    type: array
+                    items:
                       type: string
-                    descricao:
+                  max_content_length:
+                    type: integer
+                  tabelas_db:
+                    type: array
+                    items:
                       type: string
-                    data_upload:
-                      type: string
-                      format: date-time
-                    url:
-                      type: string
+                  test_write:
+                    type: string
+
+  /debug/pacientes:
+    get:
+      operationId: debug_pacientes
+      summary: Depurar lista de pacientes
+      responses:
+        '200':
+          description: Informações de debug sobre pacientes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pacientes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        nome:
+                          type: string
+                        idade:
+                          type
