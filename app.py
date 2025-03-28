@@ -1,4 +1,4 @@
-<UPDATED_CODE>from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory, make_response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory, make_response
 from flask_sqlalchemy import SQLAlchemy
 import datetime
 import os
