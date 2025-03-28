@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prontuário de {{ paciente.nome }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .imagem-container {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .imagem-prontuario {
+            max-width: 100%;
+            max-height: 300px;
+            display: block;
+            margin: 0 auto;
+        }
+        .imagem-descricao {
+            margin-top: 10px;
+            font-style: italic;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+        }
+        #preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            display: none;
+            margin: 10px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Início</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('ver_prontuarios', paciente_id=paciente.id) }}">Prontuários de {{ paciente.nome }}</a></li>
+                <li class="breadcrumb-item active">Prontuário de {{ prontuario.data_consulta.strftime('%d/%m/%Y') }}</li>
+            </ol>
+        </nav>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2>Prontuário de {{ paciente.nome }}</h2>
+                <h5>Data da consulta: {{ prontuario.data_consulta.strftime('%d/%m/%Y') }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>Diagnóstico</h4>
+                        <p>{{ prontuario.diagnostico or 'Não informado' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>Procedimento</h4>
+                        <p>{{ prontuario.procedimento or 'Não informado' }}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h4>Prescrição</h4>
+                        <p>{{ prontuario.prescricao or 'Não informado' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>Recomendações</h4>
+                        <p>{{ prontuario.recomendacoes or 'Não informado' }}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <h4>Anexos</h4>
+                        <p>{{ prontuario.anexos or 'Não informado' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h3>Imagens do Prontuário</h3>
+            </div>
+            <div class="card-body">
+                {% if prontuario.imagens %}
+                    <div class="row">
+                        {% for imagem in prontuario.imagens %}
+                            <div class="col-md-4 imagem-container">
+                                <img src="{{ url_for('ver_imagem', imagem_id=imagem.id) }}" alt="{{ imagem.descricao }}" class="imagem-prontuario">
+                                <p class="imagem-descricao">{{ imagem.descricao or 'Sem descrição' }}</p>
+                                <p class="text-muted">Enviado em: {{ imagem.data_upload.strftime('%d/%m/%Y %H:%M') }}</p>
+                                <form action="{{ url_for('excluir_imagem', imagem_id=imagem.id) }}" method="post" onsubmit="return confirm('Tem certeza que deseja excluir esta imagem?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                                </form>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-center">Nenhuma imagem cadastrada para este prontuário.</p>
+                {% endif %}
+                
+                <hr>
+                
+                <h4>Adicionar Nova Imagem</h4>
+                <form action="{{ url_for('upload_imagem', prontuario_id=prontuario.id) }}" method="post" enctype="multipart/form-data" i

@@ -6,19 +6,46 @@ import logging
 import webbrowser
 import threading
 import time
+from werkzeug.utils import secure_filename
+import uuid
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
+# Configurações para upload de arquivos
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max
+
+# Criar diretório de uploads se não existir
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///prontuarios.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 db = SQLAlchemy(app)
+
 
 logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 # MODELS
+
+class ImagemProntuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    prontuario_id = db.Column(db.Integer, db.ForeignKey('prontuario.id'), nullable=False)
+    nome_arquivo = db.Column(db.String(255), nullable=False)
+    caminho_arquivo = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text)
+    data_upload = db.Column(db.DateTime, default=datetime.datetime.now)
+    
+    # Relacionamento com o prontuário
+    prontuario = db.relationship('Prontuario', backref=db.backref('imagens', lazy=True))
+
+
 class Paciente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100))
@@ -43,7 +70,137 @@ class Agenda(db.Model):
     data_agenda = db.Column(db.Date, nullable=False)
     observacoes = db.Column(db.Text)
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 # ROTAS
+
+@app.route('/prontuario/<int:prontuario_id>/upload_imagem', methods=['POST'])
+def upload_imagem(prontuario_id):
+    try:
+        # Verificar se o prontuário existe
+        prontuario = Prontuario.query.get_or_404(prontuario_id)
+        
+        # Verificar se o arquivo foi enviado
+        if 'imagem' not in request.files:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+            return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
+        
+        arquivo = request.files['imagem']
+        
+        # Se o usuário não selecionar um arquivo
+        if arquivo.filename == '':
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'erro': 'Nenhum arquivo selecionado'}), 400
+            return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
+        
+        # Verificar se é um arquivo permitido
+        if arquivo and allowed_file(arquivo.filename):
+            # Gerar um nome de arquivo seguro e único
+            nome_original = secure_filename(arquivo.filename)
+            extensao = nome_original.rsplit('.', 1)[1].lower()
+            nome_arquivo = f"{uuid.uuid4().hex}.{extensao}"
+            
+            # Criar diretório específico para o prontuário se não existir
+            diretorio_prontuario = os.path.join(app.config['UPLOAD_FOLDER'], str(prontuario_id))
+            if not os.path.exists(diretorio_prontuario):
+                os.makedirs(diretorio_prontuario)
+            
+            # Caminho completo do arquivo
+            caminho_arquivo = os.path.join(diretorio_prontuario, nome_arquivo)
+            
+            # Salvar o arquivo
+            arquivo.save(caminho_arquivo)
+            
+            # Obter descrição da imagem
+            descricao = request.form.get('descricao', '')
+            
+            # Criar registro no banco de dados
+            imagem = ImagemProntuario(
+                prontuario_id=prontuario_id,
+                nome_arquivo=nome_original,
+                caminho_arquivo=os.path.join(str(prontuario_id), nome_arquivo),
+                descricao=descricao
+            )
+            
+            db.session.add(imagem)
+            db.session.commit()
+            
+            logging.info(f"Imagem '{nome_original}' adicionada ao prontuário ID {prontuario_id}")
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'sucesso': True,
+                    'id': imagem.id,
+                    'nome': nome_original,
+                    'url': url_for('ver_imagem', imagem_id=imagem.id)
+                })
+            
+            return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
+        
+        # Se o arquivo não for permitido
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'erro': 'Tipo de arquivo não permitido'}), 400
+        
+        return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
+    
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erro ao fazer upload de imagem: {str(e)}")
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'erro': f"Erro ao fazer upload: {str(e)}"}), 500
+        
+        return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
+
+@app.route('/imagem/<int:imagem_id>')
+def ver_imagem(imagem_id):
+    imagem = ImagemProntuario.query.get_or_404(imagem_id)
+    return send_from_directory(app.config['UPLOAD_FOLDER'], imagem.caminho_arquivo)
+
+@app.route('/imagem/<int:imagem_id>/excluir', methods=['POST'])
+def excluir_imagem(imagem_id):
+    try:
+        imagem = ImagemProntuario.query.get_or_404(imagem_id)
+        prontuario_id = imagem.prontuario_id
+        
+        # Excluir o arquivo físico
+        caminho_completo = os.path.join(app.config['UPLOAD_FOLDER'], imagem.caminho_arquivo)
+        if os.path.exists(caminho_completo):
+            os.remove(caminho_completo)
+        
+        # Excluir o registro do banco de dados
+        db.session.delete(imagem)
+        db.session.commit()
+        
+        logging.info(f"Imagem ID {imagem_id} excluída do prontuário ID {prontuario_id}")
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'sucesso': True})
+        
+        return redirect(url_for('ver_prontuario', prontuario_id=prontuario_id))
+    
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erro ao excluir imagem: {str(e)}")
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'erro': f"Erro ao excluir imagem: {str(e)}"}), 500
+        
+        return redirect(url_for('ver_prontuarios', paciente_id=Prontuario.query.get(prontuario_id).paciente_id))
+
+@app.route('/prontuario/<int:prontuario_id>')
+def ver_prontuario(prontuario_id):
+    prontuario = Prontuario.query.get_or_404(prontuario_id)
+    paciente = Paciente.query.get(prontuario.paciente_id)
+    
+    return render_template('ver_prontuario.html', 
+                          prontuario=prontuario,
+                          paciente=paciente)
+
 @app.route('/')
 def index():
     return redirect(url_for('admin_dashboard'))

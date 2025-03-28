@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: API Prontuário Odontológico
   version: '1.0'
-  description: API para gerenciar pacientes, agendamentos e prontuários odontológicos.
+  description: API para gerenciar pacientes, agendamentos, prontuários odontológicos e imagens.
 
 servers:
   - url: https://leandrolealwisemadness.pythonanywhere.com
@@ -416,3 +416,153 @@ paths:
             text/html:
               schema:
                 type: string
+
+  # Novas rotas para gerenciamento de imagens
+  /prontuario/{prontuario_id}/upload_imagem:
+    post:
+      operationId: upload_imagem
+      summary: Fazer upload de uma imagem para um prontuário
+      parameters:
+        - name: prontuario_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                imagem:
+                  type: string
+                  format: binary
+                  description: Arquivo de imagem a ser enviado
+                descricao:
+                  type: string
+                  description: Descrição opcional da imagem
+      responses:
+        '200':
+          description: Imagem enviada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sucesso:
+                    type: boolean
+                  id:
+                    type: integer
+                  nome:
+                    type: string
+                  url:
+                    type: string
+        '400':
+          description: Erro no upload da imagem
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  erro:
+                    type: string
+
+  /imagem/{imagem_id}:
+    get:
+      operationId: ver_imagem
+      summary: Visualizar uma imagem específica
+      parameters:
+        - name: imagem_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Imagem
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+
+  /imagem/{imagem_id}/excluir:
+    post:
+      operationId: excluir_imagem
+      summary: Excluir uma imagem de um prontuário
+      parameters:
+        - name: imagem_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Imagem excluída com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sucesso:
+                    type: boolean
+        '500':
+          description: Erro ao excluir imagem
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  erro:
+                    type: string
+
+  /prontuario/{prontuario_id}:
+    get:
+      operationId: ver_prontuario
+      summary: Visualizar um prontuário específico com suas imagens
+      parameters:
+        - name: prontuario_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Página do prontuário com imagens
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /prontuario/{prontuario_id}/imagens:
+    get:
+      operationId: listar_imagens_prontuario
+      summary: Listar todas as imagens de um prontuário
+      parameters:
+        - name: prontuario_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de imagens do prontuário
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    nome_arquivo:
+                      type: string
+                    descricao:
+                      type: string
+                    data_upload:
+                      type: string
+                      format: date-time
+                    url:
+                      type: string
